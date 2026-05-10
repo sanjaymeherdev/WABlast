@@ -33,9 +33,11 @@ app.post('/api/wa/connect', async (req, res) => {
 
   try {
     // Step 1 — Exchange code for access token
+    const redirectUri = `${SELF_URL}/wa-callback`;
     const tokenRes = await fetch(
       `https://graph.facebook.com/v19.0/oauth/access_token?` +
-      `client_id=${META_APP_ID}&client_secret=${META_APP_SECRET}&code=${code}`
+      `client_id=${META_APP_ID}&client_secret=${META_APP_SECRET}&code=${code}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}`
     );
     const tokenData = await tokenRes.json();
     if (tokenData.error) return res.status(400).json({ error: tokenData.error.message });

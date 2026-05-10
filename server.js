@@ -130,16 +130,23 @@ app.listen(PORT, () => {
 
 // WA OAuth Callback Page — receives code from Meta, passes to parent window
 app.get('/wa-callback', (req, res) => {
-  const { code, error } = req.query;
-  res.send(`<!DOCTYPE html><html><body>
-    <script>
-      if ('${error}') {
-        window.opener?.postMessage({ type: 'WA_ERROR', error: '${error}' }, '*');
-      } else {
-        window.opener?.postMessage({ type: 'WA_CODE', code: '${code}' }, '*');
-      }
-      window.close();
-    </script>
-    <p>Connecting WhatsApp... this window will close automatically.</p>
-  </body></html>`);
+  const code  = req.query.code  || '';
+  const error = req.query.error || '';
+
+  const html = `<!DOCTYPE html>
+<html><body>
+<script>
+  var code  = ${JSON.stringify(code)};
+  var error = ${JSON.stringify(error)};
+  if (error) {
+    window.opener && window.opener.postMessage({ type: 'WA_ERROR', error: error }, '*');
+  } else if (code) {
+    window.opener && window.opener.postMessage({ type: 'WA_CODE', code: code }, '*');
+  }
+  setTimeout(function(){ window.close(); }, 300);
+<\/script>
+<p style="font-family:sans-serif;text-align:center;margin-top:40px;">Connecting WhatsApp... closing window.</p>
+</body></html>`;
+
+  res.send(html);
 });

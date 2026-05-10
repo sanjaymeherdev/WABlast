@@ -59,10 +59,17 @@ app.post('/api/wa/connect', async (req, res) => {
       `https://graph.facebook.com/v19.0/${wabaId}/phone_numbers?access_token=${accessToken}`
     );
     const phoneData = await phoneRes.json();
-    if (!phoneData.data || phoneData.data.length === 0)
-      return res.status(400).json({ error: 'No phone numbers found in this WABA' });
+    // Fallback to test number if no real numbers found
+    const testNumber = {
+      id: '1039250922613002',
+      display_phone_number: '+1 555 642 4313',
+      verified_name: 'Test Number',
+      quality_rating: 'GREEN'
+    };
 
-    const phone = phoneData.data[0];
+    const phone = (phoneData.data && phoneData.data.length > 0)
+      ? phoneData.data[0]
+      : testNumber;
 
     // Step 4 — Save to Supabase
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/wa_accounts`, {

@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>WaBlast Pro | WhatsApp Business Dashboard</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0c12;
+      --surface: #0f1219;
+      --surface2: #141822;
+      --border: #1e2532;
+      --border2: #2a3342;
+      --text: #edf2f9;
+      --text2: #8e9cb0;
+      --text3: #5c6a82;
+      --green: #25d366;
+      --green-dim: rgba(37,211,102,0.12);
+      --amber: #ffb547;
+      --red: #ff5f7e;
+      --red-dim: rgba(255,95,126,0.12);
+      --blue: #4e8fff;
+      --purple: #a78bfa;
+      --purple-dim: rgba(167,139,250,0.12);
+      --sidebar-w: 260px;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+    
+    /* Auth */
+    .auth-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+    .auth-card { max-width: 420px; width: 100%; background: var(--surface); border: 1px solid var(--border2); border-radius: 28px; padding: 40px 36px; }
+    .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+    .auth-logo-icon { width: 44px; height: 44px; background: var(--green); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .auth-logo-text { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; }
+    .auth-logo-text span { color: var(--green); }
+    .auth-card h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .auth-card p { font-size: 14px; color: var(--text2); margin-bottom: 28px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { font-size: 12px; font-weight: 600; color: var(--text2); letter-spacing: 0.05em; text-transform: uppercase; display: block; margin-bottom: 8px; }
+    .form-group input { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 14px; padding: 13px 16px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; }
+    .form-group input:focus { outline: none; border-color: var(--green); }
+    .auth-btn { width: 100%; padding: 14px; background: var(--green); color: #000; font-weight: 700; border: none; border-radius: 14px; cursor: pointer; font-family: 'Inter', sans-serif; }
+    .auth-hint { text-align: center; font-size: 12px; color: var(--text3); margin-top: 16px; }
+    .auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--text3); font-size: 12px; }
+    .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border2); }
+    .oauth-btn { width: 100%; padding: 13px; background: var(--surface2); color: var(--text); font-weight: 600; border: 1px solid var(--border2); border-radius: 14px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; }
+    .auth-toggle { text-align: center; font-size: 13px; color: var(--text2); margin-top: 20px; }
+    .auth-toggle a { color: var(--green); cursor: pointer; font-weight: 600; }
+    .auth-error { background: var(--red-dim); color: var(--red); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
+    
+    /* App Layout */
+    .app { display: none; min-height: 100vh; }
+    .mobile-topbar { display: none; position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; align-items: center; justify-content: space-between; z-index: 200; }
+    .menu-btn { background: none; border: none; color: var(--text2); font-size: 22px; cursor: pointer; }
+    .sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); position: fixed; top: 0; left: 0; bottom: 0; z-index: 150; display: flex; flex-direction: column; overflow-y: auto; transition: transform 0.25s ease; }
+    .sidebar-logo { padding: 24px 20px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+    .logo-icon { width: 36px; height: 36px; background: var(--green); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .logo-text { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; }
+    .logo-text span { color: var(--green); }
+    .credit-widget { margin: 16px 14px; background: var(--surface2); border-radius: 20px; padding: 14px 16px; border: 1px solid var(--border2); cursor: pointer; transition: all 0.2s; }
+    .credit-widget:hover { background: var(--surface2); border-color: var(--purple); }
+    .credit-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .credit-amount { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 600; color: var(--purple); }
+    .buy-btn { background: var(--purple-dim); border: none; color: var(--purple); font-weight: 600; padding: 4px 12px; border-radius: 20px; cursor: pointer; font-size: 11px; }
+    .progress-bar { background: var(--bg); border-radius: 20px; height: 5px; overflow: hidden; margin-top: 8px; }
+    .progress-fill { height: 100%; background: var(--purple); border-radius: 20px; width: 0%; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin: 2px 12px; border-radius: 12px; font-size: 13.5px; font-weight: 500; cursor: pointer; color: var(--text2); }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: var(--purple-dim); color: var(--purple); font-weight: 600; }
+    .nav-icon { font-size: 16px; width: 20px; }
+    .sidebar-bottom { margin-top: auto; border-top: 1px solid var(--border); padding: 16px; }
+    .user-row { display: flex; align-items: center; gap: 10px; background: var(--surface2); border-radius: 14px; padding: 10px; margin-bottom: 12px; }
+    .user-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--purple); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #000; }
+    .logout-btn { width: 100%; padding: 9px; background: transparent; border: 1px solid var(--border2); border-radius: 10px; color: var(--text2); cursor: pointer; }
+    .main { margin-left: var(--sidebar-w); padding: 24px 28px; min-height: 100vh; max-width: calc(100% - var(--sidebar-w)); }
+    @media (max-width: 800px) { 
+      .mobile-topbar { display: flex; } 
+      .sidebar { transform: translateX(-100%); top: 59px; } 
+      .sidebar.open { transform: translateX(0); } 
+      .main { margin-left: 0; max-width: 100%; padding: 16px; } 
+    }
+    
+    /* Components */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px 22px; margin-bottom: 20px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 18px; }
+    .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text3); }
+    .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600; }
+    .stat-card.green .stat-value { color: var(--green); }
+    .stat-card.amber .stat-value { color: var(--amber); }
+    .stat-card.blue .stat-value { color: var(--blue); }
+    .stat-card.purple .stat-value { color: var(--purple); }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; font-family: 'Inter', sans-serif; transition: 0.15s; }
+    .btn-primary { background: var(--green); color: #000; }
+    .btn-primary:hover { background: #20bf5a; }
+    .btn-primary:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+    .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+    .btn-danger { background: var(--red); color: #000; }
+    .btn-danger:hover { background: #ff4d6d; }
+    .btn-purple { background: var(--purple); color: #000; }
+    .btn-purple:hover { background: #9b7be5; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-xs { padding: 3px 10px; font-size: 11px; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-green { background: var(--green-dim); color: var(--green); }
+    .badge-amber { background: rgba(255,181,71,0.12); color: var(--amber); }
+    .badge-red { background: var(--red-dim); color: var(--red); }
+    .badge-blue { background: rgba(78,143,255,0.12); color: var(--blue); }
+    .badge-purple { background: var(--purple-dim); color: var(--purple); }
+    .badge-APPROVED { background: var(--green-dim); color: var(--green); }
+    .badge-PENDING { background: rgba(255,181,71,0.12); color: var(--amber); }
+    .badge-REJECTED { background: var(--red-dim); color: var(--red); }
+    .data-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border-radius: 14px; padding: 12px 16px; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+    input, select, textarea { background: var(--bg); border: 1px solid var(--border2); border-radius: 12px; padding: 11px 14px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; width: 100%; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green); }
+    label { font-size: 12px; font-weight: 600; color: var(--text2); display: block; margin-bottom: 6px; margin-top: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+    .modal { display: none; position: fixed; inset: 0; align-items: center; justify-content: center; z-index: 1000; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+    .modal.open { display: flex; }
+    .modal-box { background: var(--surface); border: 1px solid var(--border2); border-radius: 28px; padding: 28px; width: 100%; max-width: 560px; max-height: 85vh; overflow-y: auto; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); padding: 10px 24px; border-radius: 40px; font-size: 13px; z-index: 9999; display: none; white-space: nowrap; }
+    .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border2); border-top-color: var(--green); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .template-preview { background: #0e2a1e; border: 1px solid #2a4530; border-radius: 24px; padding: 20px; font-family: 'Inter', sans-serif; max-width: 320px; margin: 0 auto; }
+    .placeholder-row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+    .campaign-progress { height: 6px; background: var(--border2); border-radius: 3px; overflow: hidden; margin: 16px 0; }
+    .campaign-progress-bar { height: 100%; background: var(--green); width: 0%; transition: width 0.3s; }
+    hr { border-color: var(--border); margin: 16px 0; }
+    pre { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text2); white-space: pre-wrap; word-break: break-all; background: var(--bg); padding: 12px; border-radius: 12px; }
+    select[multiple] { min-height: 120px; }
+  </style>
+</head>
+<body>
+
+<!-- Auth Overlay -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="auth-logo-icon">💬</div><div class="auth-logo-text">Wa<span>Blast</span></div></div>
+    <h1 id="authTitle">Welcome back</h1>
+    <p id="authSubtitle">Sign in to your WhatsApp Business dashboard</p>
+    <div class="auth-error" id="authError"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="authEmail" placeholder="you@example.com"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="authPass" placeholder="••••••••"></div>
+    <button class="auth-btn" id="authSubmitBtn">Sign In →</button>
+    <div class="auth-divider">or continue with</div>
+    <button class="oauth-btn" onclick="handleGoogleLogin()">Continue with Google</button>
+    <div class="auth-toggle" id="authToggle">Don't have an account? <a onclick="toggleAuthMode()">Sign up free</a></div>
+  </div>
+</div>
+
+<!-- App Dashboard -->
+<div class="app" id="app">
+  <div class="mobile-topbar"><button class="menu-btn" onclick="toggleSidebar()">☰</button><div style="font-family:'Syne';font-weight:800;">Wa<span style="color:var(--green)">Blast</span></div><div style="width:28px;"></div></div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">💬</div><div class="logo-text">Wa<span>Blast</span></div></div>
+    <div class="credit-widget" onclick="openBuyModal()">
+      <div class="credit-top"><div><div class="credit-amount" id="creditAmt">0</div><div style="font-size:10px;color:var(--text3);">credits available</div></div><button class="buy-btn">+ Buy</button></div>
+      <div class="progress-bar"><div class="progress-fill" id="creditBar" style="width:0%"></div></div>
+    </div>
+    <div class="nav-item active" data-tab="dashboard"><span class="nav-icon">📊</span> Dashboard</div>
+    <div class="nav-item" data-tab="templates"><span class="nav-icon">📋</span> Templates</div>
+    <div class="nav-item" data-tab="inbox"><span class="nav-icon">💬</span> Inbox</div>
+    <div class="nav-item" data-tab="contacts"><span class="nav-icon">👥</span> Contacts</div>
+    <div class="nav-item" data-tab="campaigns"><span class="nav-icon">🚀</span> Campaigns</div>
+    <div class="nav-item" data-tab="logs"><span class="nav-icon">📝</span> Campaign Logs</div>
+    <div class="nav-item" data-tab="settings"><span class="nav-icon">⚙️</span> Settings</div>
+    <div class="nav-item" data-tab="account"><span class="nav-icon">👤</span> Account</div>
+    <div class="sidebar-bottom"><div class="user-row"><div class="user-avatar" id="avatarLetter">U</div><div><div id="userName">User</div><div style="font-size:11px;color:var(--text3);" id="userEmailDisplay">user@wablast.com</div></div></div><button class="logout-btn" onclick="doLogout()">Sign out</button></div>
+  </div>
+
+  <div class="main" id="mainContent">
+    <!-- Dashboard Tab -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="stats-row">
+        <div class="stat-card green"><div class="stat-label">Credits</div><div class="stat-value" id="dashCredits">0</div></div>
+        <div class="stat-card blue"><div class="stat-label">Templates</div><div class="stat-value" id="dashTemplates">0</div></div>
+        <div class="stat-card amber"><div class="stat-label">Contacts</div><div class="stat-value" id="dashContacts">0</div></div>
+        <div class="stat-card purple"><div class="stat-label">Campaigns</div><div class="stat-value" id="dashCampaigns">0</div></div>
+      </div>
+      <div class="card"><div class="card-header"><span>📱 Connected WhatsApp Number</span><span class="badge badge-green" id="waStatus">● Loading...</span></div><div id="waNumberDisplay">Loading...</div><div id="waQuality"></div></div>
+      <div class="card"><div class="card-header"><span>🔔 Recent Campaigns</span></div><div id="recentCampaigns">No campaigns yet</div></div>
+    </div>
+
+    <!-- Templates Tab -->
+    <div class="tab-panel" id="tab-templates">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span>📋 Your Templates</span><button class="btn btn-primary btn-sm" onclick="openTemplateBuilder()">+ New Template</button></div>
+          <div id="templateList">Loading...</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>👁️ Live Preview</span></div>
+          <div id="templatePreviewArea" class="template-preview">Select a template to preview</div>
+          <div id="placeholderMappingPreview" style="margin-top: 12px; font-size: 12px; color: var(--text3);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inbox Tab -->
+    <div class="tab-panel" id="tab-inbox">
+      <div class="card">
+        <div class="card-header"><span>💬 Inbox</span><button class="btn btn-secondary btn-sm" onclick="loadInbox()">↻ Refresh</button></div>
+        <div id="inboxList">No messages yet. Configure webhook to receive messages.</div>
+      </div>
+    </div>
+
+    <!-- Contacts Tab -->
+    <div class="tab-panel" id="tab-contacts">
+      <div class="card">
+        <div class="card-header"><span>👥 Import Contacts</span></div>
+        <label>Paste CSV (Name, Phone, Message - one per line)</label>
+        <textarea id="pasteInput" rows="4" placeholder="John Doe, 919876543210, Hi John!"></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="parsePaste()">📥 Parse & Add</button>
+          <button class="btn btn-secondary" onclick="saveContacts()">💾 Save</button>
+          <button class="btn btn-danger" onclick="clearContacts()">🗑️ Clear All</button>
+        </div>
+        <div style="margin-top: 16px;">
+          <label>📁 Import from CSV/Excel</label>
+          <input type="file" id="importFile" accept=".csv,.xlsx,.xls">
+          <div class="btn-row"><button class="btn btn-secondary btn-sm" onclick="importFile()">Import File</button><button class="btn btn-secondary btn-sm" onclick="downloadTemplate()">Download Template</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>📋 Contact List (<span id="contactCount">0</span>)</span></div>
+        <div style="overflow-x: auto;"><table style="width:100%"><thead><tr><th>Name</th><th>Phone</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody id="contactsBody"></tbody>}</div>
+      </div>
+    </div>
+
+    <!-- Campaigns Tab -->
+    <div class="tab-panel" id="tab-campaigns">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span>📣 Create Campaign</span></div>
+          <label>Campaign Name</label><input type="text" id="campaignName" placeholder="Summer Sale 2024">
+          <label>Select Template (Approved only)</label><select id="campaignTemplateSelect" onchange="loadTemplatePlaceholders()"></select>
+          <div id="campaignPlaceholderMapping"></div>
+          <label>Select Contacts (hold Ctrl/Cmd for multiple)</label>
+          <select id="campaignContactSelect" multiple size="5"></select>
+          <div class="btn-row"><button class="btn btn-primary" onclick="createCampaign()">Create Campaign</button></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>📊 Active Campaigns</span><button class="btn btn-secondary btn-sm" onclick="loadCampaigns()">↻ Refresh</button></div>
+          <div id="campaignsList">No campaigns</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campaign Logs Tab -->
+    <div class="tab-panel" id="tab-logs">
+      <div class="card">
+        <div class="card-header"><span>📝 Campaign Logs</span></div>
+        <label>Select Campaign</label>
+        <select id="logCampaignSelect" onchange="loadCampaignLogs()"></select>
+        <div id="campaignLogsList">Select a campaign to view logs</div>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span>🔧 API Settings</span></div>
+          <label>WhatsApp Business API Key</label><input type="password" id="waApiKey" placeholder="Your Meta access token">
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveApiSettings()">💾 Save</button></div>
+          <hr>
+          <div class="card-header"><span>🤖 AI Auto-Reply</span></div>
+          <label>Groq API Key</label><input type="password" id="groqKey" placeholder="gsk_...">
+          <label>System Prompt</label><textarea id="autoReplyPrompt" rows="3" placeholder="You are a helpful assistant..."></textarea>
+          <label><input type="checkbox" id="autoReplyEnabled"> Enable Auto-Reply</label>
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveAiSettings()">Save AI Settings</button></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>💰 Credits & Transactions</span><button class="btn btn-purple btn-sm" onclick="openBuyModal()">+ Buy Credits</button></div>
+          <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;"><table style="width:100%"><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th><th>Description</th></tr></thead><tbody id="transactionsBody"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account Tab -->
+    <div class="tab-panel" id="tab-account">
+      <div class="card">
+        <div class="card-header"><span>👤 Profile</span></div>
+        <label>Full Name</label><input type="text" id="profileName">
+        <label>Email</label><input type="email" id="profileEmail">
+        <div class="btn-row"><button class="btn btn-primary" onclick="updateProfile()">Update Profile</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>📞 Connected WhatsApp Numbers</span></div>
+        <div id="waAccountsList"></div>
+        <button class="btn btn-primary" style="margin-top:16px;width:100%;" onclick="startEmbeddedSignup()">➕ Connect WhatsApp Number</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Buy Credits Modal -->
+<div class="modal" id="creditModal"><div class="modal-box">
+  <div class="card-header"><span>💎 Buy Credits</span><button class="btn btn-secondary btn-xs" onclick="closeModal('creditModal')">✕</button></div>
+  <div class="pack-grid" id="packGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:16px 0;"></div>
+  <div id="buyStatus" style="font-size:12px;color:var(--text3);text-align:center;margin:12px 0;"></div>
+  <button class="btn btn-purple" style="width:100%;" id="payBtn" onclick="proceedBuy()">Proceed to Payment</button>
+</div></div>
+
+<!-- Template Builder Modal -->
+<div class="modal" id="templateModal"><div class="modal-box" style="max-width:700px;">
+  <div class="card-header"><span>📝 Create Template</span><button class="btn btn-secondary btn-xs" onclick="closeModal('templateModal')">✕</button></div>
+  <label>Template Name (unique, lowercase, underscore)</label><input type="text" id="tplName" placeholder="welcome_message">
+  <label>Category</label><select id="tplCategory"><option>MARKETING</option><option>UTILITY</option><option>AUTHENTICATION</option></select>
+  <label>Body with placeholders (use {{1}}, {{2}}, up to {{5}})</label>
+  <textarea id="tplBody" rows="4" placeholder="Hi {{1}}, welcome to {{2}}! Use code {{3}} for 20% off."></textarea>
+  <div id="placeholderLabels"></div>
+  <label>Media (optional)</label><select id="tplMediaType"><option value="">None</option><option value="image">Image</option><option value="video">Video</option><option value="document">Document</option></select>
+  <input type="text" id="tplMediaUrl" placeholder="https://example.com/image.jpg">
+  <div class="btn-row"><button class="btn btn-primary" onclick="submitTemplate()">Submit for Review</button><button class="btn btn-secondary" onclick="closeModal('templateModal')">Cancel</button></div>
+</div></div>
+
+<script>
+// Configuration
+const SUPABASE_URL = 'https://kcwtmzwasjgpvbrsjbux.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtjd3Rtendhc2pncHZicnNqYnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTc2NTgsImV4cCI6MjA4OTc3MzY1OH0.Tr7Zm04qjgPwiyjtP3TTpY4G2FixJTpIMGwN9XiYyz4';
+const EDGE_FN_URL = `${SUPABASE_URL}/functions/v1/wablast`;
+
+let authToken = null;
+let userCredits = 0;
+let contacts = [];
+let templates = [];
+let campaigns = [];
+let currentPollingIntervals = {};
+
+// Helper functions
+function showToast(msg, isError = false) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.background = isError ? 'var(--red-dim)' : 'var(--green-dim)';
+  toast.style.color = isError ? 'var(--red)' : 'var(--green)';
+  toast.style.display = 'block';
+  setTimeout(() => { toast.style.display = 'none'; }, 3000);
+}
+
+async function callEdge(action, body = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const res = await fetch(EDGE_FN_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ action, ...body })
+  });
+  if (res.status === 401) { showToast('Session expired. Please login again.', true); logout(); throw new Error('Unauthorized'); }
+  return res.json();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+// Auth
+let authMode = 'signin';
+function toggleAuthMode() {
+  authMode = authMode === 'signin' ? 'signup' : 'signin';
+  document.getElementById('authTitle').innerText = authMode === 'signin' ? 'Welcome back' : 'Create account';
+  document.getElementById('authSubtitle').innerText = authMode === 'signin' ? 'Sign in to your WhatsApp Business dashboard' : 'Get 50 free credits on signup';
+  document.getElementById('authSubmitBtn').innerText = authMode === 'signin' ? 'Sign In →' : 'Create Account →';
+  document.getElementById('authToggle').innerHTML = authMode === 'signin' ? 'Don\'t have an account? <a onclick="toggleAuthMode()">Sign up free</a>' : 'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>';
+}
+
+async function handleEmailAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPass').value;
+  if (!email || !password) { showToast('Please enter email and password', true); return; }
+  const btn = document.getElementById('authSubmitBtn');
+  btn.innerText = 'Please wait...';
+  btn.disabled = true;
+  try {
+    let result;
+    if (authMode === 'signin') {
+      result = await callEdge('login', { email, password });
+    } else {
+      result = await callEdge('register', { email, password, full_name: email.split('@')[0] });
+    }
+    if (result.success && result.token) {
+      authToken = result.token;
+      localStorage.setItem('auth_token', authToken);
+      showDashboard(result);
+    } else {
+      showToast(result.message || 'Authentication failed', true);
+    }
+  } catch (err) { showToast(err.message, true); }
+  btn.innerText = authMode === 'signin' ? 'Sign In →' : 'Create Account →';
+  btn.disabled = false;
+}
+
+async function handleGoogleLogin() {
+  showToast('Google OAuth configured in Supabase. Use email/password for demo.', true);
+}
+
+function logout() {
+  authToken = null;
+  localStorage.removeItem('auth_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('authOverlay').style.display = 'flex';
+}
+
+// Dashboard
+async function showDashboard(data) {
+  document.getElementById('authOverlay').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('userEmailDisplay').innerText = data.user?.email || '';
+  document.getElementById('userName').innerText = data.user?.user_metadata?.full_name || data.user?.email?.split('@')[0] || 'User';
+  document.getElementById('avatarLetter').innerText = (data.user?.user_metadata?.full_name?.[0] || data.user?.email?.[0] || 'U').toUpperCase();
+  
+  if (data.profile) updateCreditUI(data.profile.credits || 0);
+  if (data.contacts) { contacts = data.contacts; renderContacts(); }
+  if (data.templates) { templates = data.templates; renderTemplates(); }
+  await loadDashboardStats();
+  await loadWAConnection();
+  await loadCampaigns();
+  await loadTransactions();
+  await loadContactsForSelect();
+}
+
+async function loadDashboardStats() {
+  const stats = await callEdge('getCredits');
+  if (stats.success) updateCreditUI(stats.credits);
+  document.getElementById('dashTemplates').innerText = templates.length;
+  document.getElementById('dashContacts').innerText = contacts.length;
+  const campaignsRes = await callEdge('getCampaignStats', {});
+  if (campaignsRes.success && campaignsRes.campaigns) {
+    document.getElementById('dashCampaigns').innerText = campaignsRes.campaigns.length;
+    const recentHtml = campaignsRes.campaigns.slice(0,5).map(c => `<div class="data-row"><span>${escapeHtml(c.name)}</span><span class="badge badge-${c.status}">${c.status}</span><span>${c.sent_count || 0}/${c.total_contacts || 0} sent</span></div>`).join('') || 'No campaigns';
+    document.getElementById('recentCampaigns').innerHTML = recentHtml;
+  }
+}
+
+async function loadWAConnection() {
+  try {
+    const res = await callEdge('getWaAccounts');
+    if (res.success && res.accounts?.length) {
+      const acc = res.accounts[0];
+      document.getElementById('waNumberDisplay').innerHTML = acc.phone_number;
+      document.getElementById('waQuality').innerHTML = `<span class="badge badge-green">Quality: ${acc.quality_rating}</span>`;
+      document.getElementById('waStatus').innerHTML = '● Connected';
+    } else {
+      document.getElementById('waNumberDisplay').innerHTML = 'No number connected';
+      document.getElementById('waStatus').innerHTML = '● Not Connected';
+    }
+  } catch(e) { console.error(e); }
+}
+
+function updateCreditUI(credits) {
+  userCredits = credits;
+  document.getElementById('creditAmt').innerText = credits.toLocaleString();
+  document.getElementById('dashCredits').innerText = credits.toLocaleString();
+  const pct = Math.min(100, (credits / 2000) * 100);
+  document.getElementById('creditBar').style.width = pct + '%';
+}
+
+// Templates
+function renderTemplates() {
+  const container = document.getElementById('templateList');
+  if (!container) return;
+  if (!templates.length) { container.innerHTML = '<div class="data-row">No templates. Create one above.</div>'; return; }
+  container.innerHTML = templates.map(t => `
+    <div class="data-row">
+      <div><b>${escapeHtml(t.name)}</b><br><small>${t.category}</small><br><span style="font-size:11px;">${escapeHtml(t.body?.substring(0,60))}</span></div>
+      <div><span class="badge badge-${t.status}">${t.status}</span><button class="btn btn-secondary btn-xs" onclick="previewTemplate('${t.id}')">Preview</button>${t.status !== 'PENDING' ? `<button class="btn btn-danger btn-xs" onclick="deleteTemplate('${t.id}')">Delete</button>` : ''}</div>
+    </div>
+  `).join('');
+}
+
+function previewTemplate(id) {
+  const tpl = templates.find(t => t.id === id);
+  if (!tpl) return;
+  document.getElementById('templatePreviewArea').innerHTML = `<div class="bubble-out">${escapeHtml(tpl.body)}</div><div class="bubble-in">WhatsApp preview</div>`;
+  if (tpl.placeholders?.length) {
+    document.getElementById('placeholderMappingPreview').innerHTML = `<strong>Placeholders:</strong> ${tpl.placeholders.map(p => `{{${p.position}}} = ${p.label || 'Field ' + p.position}`).join(', ')}`;
+  }
+}
+
+function openTemplateBuilder() {
+  document.getElementById('tplName').value = '';
+  document.getElementById('tplBody').value = '';
+  document.getElementById('placeholderLabels').innerHTML = '';
+  document.getElementById('tplMediaUrl').value = '';
+  openModal('templateModal');
+  document.getElementById('tplBody').removeEventListener('input', updatePlaceholderInputs);
+  document.getElementById('tplBody').addEventListener('input', updatePlaceholderInputs);
+}
+
+function updatePlaceholderInputs() {
+  const body = document.getElementById('tplBody').value;
+  const matches = body.match(/\{\{(\d+)\}\}/g) || [];
+  const positions = [...new Set(matches.map(m => parseInt(m.match(/\d+/)[0])))].filter(p => p <= 5);
+  const container = document.getElementById('placeholderLabels');
+  container.innerHTML = positions.map(pos => `
+    <div class="placeholder-row">
+      <span style="font-family:monospace;">{{${pos}}}</span>
+      <input type="text" id="phLabel_${pos}" placeholder="Label for {{${pos}}}" style="flex:1;">
+      <input type="text" id="phSample_${pos}" placeholder="Sample value" style="flex:1;">
+    </div>
+  `).join('');
+}
+
+async function submitTemplate() {
+  const name = document.getElementById('tplName').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const body = document.getElementById('tplBody').value.trim();
+  const category = document.getElementById('tplCategory').value;
+  if (!name || !body) { showToast('Name and body required', true); return; }
+  
+  const placeholders = [];
+  const matches = body.match(/\{\{(\d+)\}\}/g) || [];
+  const positions = [...new Set(matches.map(m => parseInt(m.match(/\d+/)[0])))];
+  for (const pos of positions) {
+    const label = document.getElementById(`phLabel_${pos}`)?.value || `Field ${pos}`;
+    const sample = document.getElementById(`phSample_${pos}`)?.value || '';
+    placeholders.push({ position: pos, label, sample });
+  }
+  
+  const mediaUrl = document.getElementById('tplMediaUrl').value.trim();
+  const mediaType = document.getElementById('tplMediaType').value;
+  
+  showToast('Submitting template for review...');
+  const res = await callEdge('createTemplate', { name, body, category, placeholders, media_url: mediaUrl, media_type: mediaType });
+  if (res.success) {
+    showToast('Template submitted! Polling for approval...');
+    closeModal('templateModal');
+    if (res.template) templates.unshift(res.template);
+    else templates.unshift({ id: Date.now(), name, body, category, status: 'PENDING', placeholders });
+    renderTemplates();
+    startTemplatePolling(res.template?.id || Date.now());
+  } else {
+    showToast(res.message || 'Submission failed', true);
+  }
+}
+
+function startTemplatePolling(templateId) {
+  if (currentPollingIntervals[templateId]) clearInterval(currentPollingIntervals[templateId]);
+  let attempts = 0;
+  currentPollingIntervals[templateId] = setInterval(async () => {
+    attempts++;
+    if (attempts > 60) {
+      clearInterval(currentPollingIntervals[templateId]);
+      showToast(`Template polling timeout after 10 minutes`, true);
+      return;
+    }
+    const res = await callEdge('pollTemplateStatus', { template_id: templateId });
+    if (res.success && res.is_final) {
+      clearInterval(currentPollingIntervals[templateId]);
+      const index = templates.findIndex(t => t.id === templateId);
+      if (index !== -1) {
+        templates[index].status = res.status;
+        renderTemplates();
+        showToast(`Template ${res.status === 'APPROVED' ? 'approved! 🎉' : 'rejected'}`);
+        await loadTemplatesForSelect();
+      }
+    }
+  }, 10000);
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('Delete this template? This action cannot be undone.')) return;
+  const res = await callEdge('deleteTemplate', { template_id: id });
+  if (res.success) {
+    templates = templates.filter(t => t.id !== id);
+    renderTemplates();
+    showToast('Template deleted');
+    await loadTemplatesForSelect();
+  } else {
+    showToast(res.message || 'Delete failed', true);
+  }
+}
+
+// Contacts
+function renderContacts() {
+  const tbody = document.getElementById('contactsBody');
+  if (!tbody) return;
+  document.getElementById('contactCount').innerText = contacts.length;
+  if (!contacts.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);">No contacts. Import above.</td></tr>'; return; }
+  tbody.innerHTML = contacts.map((c, i) => `
+    <tr>
+      <td>${escapeHtml(c.name)}</td>
+      <td>${c.phone}</td>
+      <td style="font-size:11px;color:var(--text3);">${escapeHtml(c.message || '—')}</td>
+      <td><span class="badge badge-${c.status || 'pending'}">${c.status || 'pending'}</span></td>
+      <td><button onclick="removeContact(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+function removeContact(i) { contacts.splice(i, 1); renderContacts(); }
+
+function parsePaste() {
+  const raw = document.getElementById('pasteInput').value;
+  const lines = raw.split(/\r?\n/);
+  let added = 0;
+  for (const line of lines) {
+    const parts = line.split(/[\t,]/);
+    if (parts.length >= 2) {
+      let phone = parts[1].replace(/\D/g, '');
+      if (phone.length === 10) phone = '91' + phone;
+      if (phone.length >= 10 && !contacts.some(c => c.phone === phone)) {
+        contacts.push({ name: parts[0].trim(), phone, message: parts[2]?.trim() || '', status: 'pending' });
+        added++;
+      }
+    }
+  }
+  renderContacts();
+  showToast(`Added ${added} contacts`);
+  document.getElementById('pasteInput').value = '';
+  loadContactsForSelect();
+}
+
+async function saveContacts() {
+  const res = await callEdge('saveContacts', { contacts });
+  if (res.success) showToast('Contacts saved');
+  else showToast(res.message || 'Save failed', true);
+}
+
+function clearContacts() { contacts = []; renderContacts(); loadContactsForSelect(); }
+
+async function importFile() {
+  const file = document.getElementById('importFile').files[0];
+  if (!file) { showToast('Select a file first', true); return; }
+  const extension = file.name.split('.').pop().toLowerCase();
+  let data = [];
+  if (extension === 'csv') {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/);
+    const headers = lines[0].split(',').map(h => h.toLowerCase().trim());
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',');
+      const row = {};
+      headers.forEach((h, idx) => row[h] = values[idx]?.trim() || '');
+      if (Object.keys(row).length) data.push(row);
+    }
+  } else if (extension === 'xlsx' || extension === 'xls') {
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    data = XLSX.utils.sheet_to_json(ws);
+  }
+  let added = 0;
+  for (const row of data) {
+    let phone = row.phone || row.mobile || row.number || '';
+    phone = phone.toString().replace(/\D/g, '');
+    if (phone.length === 10) phone = '91' + phone;
+    if (phone.length >= 10 && !contacts.some(c => c.phone === phone)) {
+      contacts.push({ name: row.name || row.fullname || phone, phone, message: row.message || '', status: 'pending' });
+      added++;
+    }
+  }
+  renderContacts();
+  showToast(`Imported ${added} contacts`);
+  loadContactsForSelect();
+}
+
+function downloadTemplate() {
+  const csv = 'Name,Phone,Message\nJohn Doe,919876543210,Hi John!\n';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'contacts_template.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function loadContactsForSelect() {
+  const select = document.getElementById('campaignContactSelect');
+  if (select) {
+    select.innerHTML = contacts.map(c => `<option value="${c.id || c.phone}">${escapeHtml(c.name)} (${c.phone})</option>`).join('');
+  }
+}
+
+// Campaigns
+async function loadCampaigns() {
+  const res = await callEdge('getCampaignStats', {});
+  if (res.success && res.campaigns) {
+    campaigns = res.campaigns;
+    const container = document.getElementById('campaignsList');
+    const select = document.getElementById('logCampaignSelect');
+    const statsHtml = campaigns.map(c => `
+      <div class="data-row">
+        <div><b>${escapeHtml(c.name)}</b><br><small>${c.template_name || 'No template'}</small></div>
+        <div><span class="badge badge-${c.status}">${c.status}</span></div>
+        <div>${c.sent_count || 0}/${c.total_contacts || 0} sent</div>
+        <div><button class="btn btn-primary btn-sm" onclick="startCampaign('${c.id}')" ${c.status !== 'draft' ? 'disabled' : ''}>Start</button></div>
+      </div>
+    `).join('');
+    if (container) container.innerHTML = statsHtml || '<div class="data-row">No campaigns</div>';
+    if (select) {
+      select.innerHTML = '<option value="">Select campaign</option>' + campaigns.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${c.status})</option>`).join('');
+    }
+  }
+}
+
+async function loadTemplatesForSelect() {
+  const select = document.getElementById('campaignTemplateSelect');
+  if (!select) return;
+  const approved = templates.filter(t => t.status === 'APPROVED');
+  select.innerHTML = approved.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  if (approved.length) loadTemplatePlaceholders();
+}
+
+async function loadTemplatePlaceholders() {
+  const templateId = document.getElementById('campaignTemplateSelect').value;
+  const tpl = templates.find(t => t.id === templateId);
+  const container = document.getElementById('campaignPlaceholderMapping');
+  if (!tpl?.placeholders?.length) { container.innerHTML = ''; return; }
+  container.innerHTML = `<label>Map Placeholders to Contact Fields</label>` + tpl.placeholders.map(ph => `
+    <div class="placeholder-row">
+      <span style="font-family:monospace;width:60px;">{{${ph.position}}}</span>
+      <select id="map_${ph.position}" style="flex:1;">
+        <option value="">-- Select column --</option>
+        <option value="name">Name</option>
+        <option value="phone">Phone</option>
+        <option value="custom">Custom value</option>
+      </select>
+      <input type="text" id="map_custom_${ph.position}" placeholder="Custom value" style="display:none;flex:1;">
+    </div>
+  `).join('');
+  
+  for (const ph of tpl.placeholders) {
+    const select = document.getElementById(`map_${ph.position}`);
+    const customInput = document.getElementById(`map_custom_${ph.position}`);
+    if (select && customInput) {
+      select.onchange = () => { customInput.style.display = select.value === 'custom' ? 'block' : 'none'; };
+    }
+  }
+}
+
+async function createCampaign() {
+  const name = document.getElementById('campaignName').value.trim();
+  const templateId = document.getElementById('campaignTemplateSelect').value;
+  if (!name) { showToast('Campaign name required', true); return; }
+  if (!templateId) { showToast('Select a template', true); return; }
+  
+  const placeholderMapping = {};
+  const tpl = templates.find(t => t.id === templateId);
+  if (tpl?.placeholders) {
+    for (const ph of tpl.placeholders) {
+      const select = document.getElementById(`map_${ph.position}`);
+      const customInput = document.getElementById(`map_custom_${ph.position}`);
+      if (select && select.value === 'custom' && customInput?.value) {
+        placeholderMapping[`{{${ph.position}}}`] = customInput.value;
+      } else if (select && select.value && select.value !== 'custom') {
+        placeholderMapping[`{{${ph.position}}}`] = select.value;
+      }
+    }
+  }
+  
+  const selectedOptions = Array.from(document.getElementById('campaignContactSelect').selectedOptions);
+  const contactIds = selectedOptions.map(opt => opt.value);
+  
+  const res = await callEdge('createCampaign', { name, template_id: templateId, placeholder_mapping: placeholderMapping, contact_ids: contactIds });
+  if (res.success) {
+    showToast('Campaign created!');
+    document.getElementById('campaignName').value = '';
+    await loadCampaigns();
+  } else {
+    showToast(res.message || 'Creation failed', true);
+  }
+}
+
+async function startCampaign(id) {
+  if (!confirm('Start this campaign? Credits will be deducted per message.')) return;
+  const res = await callEdge('startCampaign', { campaign_id: id });
+  if (res.success) {
+    showToast(`Campaign started! Sending to ${res.total_contacts || 'selected'} contacts`);
+    await loadCampaigns();
+  } else {
+    showToast(res.message || 'Start failed', true);
+  }
+}
+
+async function loadCampaignLogs() {
+  const campaignId = document.getElementById('logCampaignSelect').value;
+  if (!campaignId) { document.getElementById('campaignLogsList').innerHTML = 'Select a campaign'; return; }
+  const res = await callEdge('getCampaignLogs', { campaign_id: campaignId, limit: 200 });
+  if (res.success && res.logs) {
+    document.getElementById('campaignLogsList').innerHTML = `
+      <table style="width:100%"><thead><tr><th>Phone</th><th>Name</th><th>Status</th><th>Error</th><th>Time</th></tr></thead><tbody>
+      ${res.logs.map(l => `<tr><td>${l.phone}</td><td>${escapeHtml(l.contact_name || '')}</td><td><span class="badge badge-${l.status}">${l.status}</span></td><td style="font-size:11px;">${escapeHtml(l.error_reason || '—')}</td><td style="font-size:11px;">${new Date(l.created_at).toLocaleString()}</td></tr>`).join('')}
+      </tbody></table>
+      ${res.logs.length === 0 ? '<div class="data-row">No logs yet</div>' : ''}
+    `;
+  }
+}
+
+// Settings
+async function saveApiSettings() {
+  const apiKey = document.getElementById('waApiKey').value.trim();
+  await callEdge('saveConfig', { wa_api_key: apiKey });
+  showToast('API settings saved');
+}
+
+async function saveAiSettings() {
+  const groqKey = document.getElementById('groqKey').value.trim();
+  const autoReply = document.getElementById('autoReplyEnabled').checked;
+  const autoReplyPrompt = document.getElementById('autoReplyPrompt').value;
+  await callEdge('saveConfig', { groq_key: groqKey });
+  await callEdge('saveSettings', { auto_reply: autoReply, auto_reply_prompt: autoReplyPrompt });
+  showToast('AI settings saved');
+}
+
+async function updateProfile() {
+  showToast('Profile update coming soon', true);
+}
+
+// Credits & Buy Modal
+async function loadTransactions() {
+  const res = await callEdge('getCredits');
+  if (res.success && res.transactions) {
+    const tbody = document.getElementById('transactionsBody');
+    if (tbody) {
+      tbody.innerHTML = res.transactions.map(tx => `
+        <tr>
+          <td style="font-size:11px;">${new Date(tx.created_at).toLocaleDateString()}</td>
+          <td><span class="badge badge-${tx.type}">${tx.type}</span></td>
+          <td style="color:${tx.amount > 0 ? 'var(--green)' : 'var(--red)'}">${tx.amount > 0 ? '+' : ''}${tx.amount}</td>
+          <td>${tx.balance_after}</td>
+          <td style="font-size:11px;">${escapeHtml(tx.description || '')}</td>
+        </tr>
+      `).join('');
+    }
+  }
+}
+
+function openBuyModal() {
+  const packs = [
+    { id: 'pack_100', credits: 100, amount: 25, best: false },
+    { id: 'pack_250', credits: 250, amount: 62.5, best: false },
+    { id: 'pack_500', credits: 500, amount: 125, best: false },
+    { id: 'pack_1500', credits: 1500, amount: 375, best: true },
+    { id: 'pack_4000', credits: 4000, amount: 1000, best: false },
+  ];
+  const grid = document.getElementById('packGrid');
+  grid.innerHTML = packs.map(p => `
+    <div class="pack-card" style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px;text-align:center;cursor:pointer;" onclick="selectPack('${p.id}')">
+      <div style="font-size:22px;font-weight:800;color:var(--purple);">${p.credits}</div>
+      <div style="font-size:10px;">credits</div>
+      <div style="font-size:18px;font-weight:800;">₹${p.amount}</div>
+      ${p.best ? '<div style="font-size:10px;color:var(--green);">⭐ Best Value</div>' : ''}
+    </div>
+  `).join('');
+  openModal('creditModal');
+}
+
+let selectedPack = null;
+function selectPack(packId) {
+  selectedPack = packId;
+  document.querySelectorAll('.pack-card').forEach(el => el.style.borderColor = 'var(--border2)');
+  if (event && event.currentTarget) event.currentTarget.style.borderColor = 'var(--purple)';
+}
+
+async function proceedBuy() {
+  if (!selectedPack) { showToast('Select a credit pack', true); return; }
+  const btn = document.getElementById('payBtn');
+  btn.innerText = 'Creating order...';
+  btn.disabled = true;
+  const res = await callEdge('buyCredits', { pack_id: selectedPack });
+  if (res.success && res.payment_url) {
+    window.open(res.payment_url, '_blank');
+    showToast('Payment window opened. Complete payment and refresh.');
+  } else {
+    showToast(res.message || 'Payment failed', true);
+  }
+  btn.innerText = 'Proceed to Payment';
+  btn.disabled = false;
+}
+
+// Inbox (placeholder)
+function loadInbox() {
+  document.getElementById('inboxList').innerHTML = '<div class="data-row">Inbox requires webhook configuration. Set up /webhook endpoint on your server.</div>';
+}
+
+// WA Embedded Signup (placeholder)
+function startEmbeddedSignup() {
+  showToast('WhatsApp number connection requires Meta App OAuth. Configure in Express server.', true);
+}
+
+// Utility
+function escapeHtml(str) { if (!str) return ''; return String(str).replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
+
+// Tab switching
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const panel = document.getElementById(`tab-${tabName}`);
+  if (panel) panel.classList.add('active');
+  const nav = document.querySelector(`[data-tab="${tabName}"]`);
+  if (nav) nav.classList.add('active');
+  if (tabName === 'templates') renderTemplates();
+  if (tabName === 'contacts') renderContacts();
+  if (tabName === 'campaigns') { loadCampaigns(); loadTemplatesForSelect(); }
+  if (tabName === 'logs') loadCampaigns();
+}
+
+// Initialize
+document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => switchTab(n.dataset.tab)));
+document.getElementById('authSubmitBtn').onclick = handleEmailAuth;
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.getElementById('authOverlay').style.display !== 'none') handleEmailAuth(); });
+
+const savedToken = localStorage.getItem('auth_token');
+if (savedToken) {
+  authToken = savedToken;
+  callEdge('loadAll', {}).then(data => {
+    if (data.success) showDashboard(data);
+    else { localStorage.removeItem('auth_token'); location.reload(); }
+  }).catch(() => { localStorage.removeItem('auth_token'); location.reload(); });
+} else {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('authOverlay').style.display = 'flex';
+}
+
+// Expose functions globally
+window.toggleAuthMode = toggleAuthMode;
+window.handleGoogleLogin = handleGoogleLogin;
+window.doLogout = logout;
+window.toggleSidebar = toggleSidebar;
+window.openBuyModal = openBuyModal;
+window.closeModal = closeModal;
+window.selectPack = selectPack;
+window.proceedBuy = proceedBuy;
+window.openTemplateBuilder = openTemplateBuilder;
+window.submitTemplate = submitTemplate;
+window.previewTemplate = previewTemplate;
+window.deleteTemplate = deleteTemplate;
+window.removeContact = removeContact;
+window.parsePaste = parsePaste;
+window.saveContacts = saveContacts;
+window.clearContacts = clearContacts;
+window.importFile = importFile;
+window.downloadTemplate = downloadTemplate;
+window.startCampaign = startCampaign;
+window.createCampaign = createCampaign;
+window.loadCampaigns = loadCampaigns;
+window.loadCampaignLogs = loadCampaignLogs;
+window.saveApiSettings = saveApiSettings;
+window.saveAiSettings = saveAiSettings;
+window.updateProfile = updateProfile;
+window.startEmbeddedSignup = startEmbeddedSignup;
+window.loadInbox = loadInbox;
+window.loadTemplatePlaceholders = loadTemplatePlaceholders;
+window.switchTab = switchTab;
+</script>
+</body>
+</html>

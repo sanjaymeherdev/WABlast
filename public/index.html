@@ -34,7 +34,7 @@
     
     /* Auth */
     .auth-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
-    .auth-card { max-width: 420px; width: 100%; background: var(--surface); border: 1px solid var(--border2); border-radius: 28px; padding: 40px 36px; }
+   .auth-card { max-width: 420px; width: 100%; background: var(--surface); border: 1px solid var(--border2); border-radius: 28px; padding: 40px 36px; max-height: 92vh; overflow-y: auto; }
     .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
     .auth-logo-icon { width: 44px; height: 44px; background: var(--green); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
     .auth-logo-text { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; }
@@ -241,7 +241,7 @@
       </div>
       <div class="card">
         <div class="card-header"><span>📋 Contact List (<span id="contactCount">0</span>)</span></div>
-        <div style="overflow-x: auto;"><table style="width:100%"><thead><tr><th>Name</th><th>Phone</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody id="contactsBody"></tbody>}</div>
+        <div style="overflow-x: auto;"><table style="width:100%"><thead><tr><th>Name</th><th>Phone</th><th>Message</th><th>Status</th><th></th></tr></thead><tbody id="contactsBody"></tbody></div>
       </div>
     </div>
 
@@ -290,7 +290,7 @@
         </div>
         <div class="card">
           <div class="card-header"><span>💰 Credits & Transactions</span><button class="btn btn-purple btn-sm" onclick="openBuyModal()">+ Buy Credits</button></div>
-          <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;"><table style="width:100%"><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th><th>Description</th></tr></thead><tbody id="transactionsBody"></tbody>}</div>
+          <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;"><table style="width:100%"><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th><th>Description</th></tr></thead><tbody id="transactionsBody"></tbody></div>
         </div>
       </div>
     </div>
@@ -306,7 +306,8 @@
       <div class="card">
         <div class="card-header"><span>📞 Connected WhatsApp Numbers</span></div>
         <div id="waAccountsList"></div>
-        <button class="btn btn-primary" style="margin-top:16px;width:100%;" onclick="startEmbeddedSignup()">➕ Connect WhatsApp Number</button>
+      <button class="btn btn-primary" style="margin-top:16px;width:100%;" onclick="startEmbeddedSignup()">➕ Connect WhatsApp Number</button>
+<div id="waConnectStatus" style="margin-top:10px;font-size:13px;text-align:center;"></div>
       </div>
     </div>
   </div>
@@ -431,7 +432,35 @@ async function handleFacebookLogin() {
   });
   if (error) showToast(error.message, true);
 }
+async function loadWaAccounts() {
+  try {
+    const res = await callEdge('getWaAccounts');
+    const div = document.getElementById('waAccountsList');
+    if (!div) return;
+    if (!res.success || !res.accounts?.length) {
+      div.innerHTML = '<div style="color:var(--text3);font-size:13px;">No numbers connected yet.</div>';
+      return;
+    }
+    div.innerHTML = res.accounts.map(a => `
+      <div class="data-row">
+        <div>
+          <b>${escapeHtml(a.display_name || a.phone_number)}</b><br>
+          <span style="color:var(--text3);font-size:12px;">${a.phone_number}</span><br>
+          <span class="badge badge-green">${a.quality_rating || 'Unknown'}</span>
+          ${a.is_active ? '<span class="badge badge-green">● Active</span>' : ''}
+        </div>
+        <button class="btn btn-danger btn-xs" onclick="disconnectWaNumber('${a.id}')">Disconnect</button>
+      </div>
+    `).join('');
+  } catch(err) { console.error('loadWaAccounts:', err); }
+}
 
+async function disconnectWaNumber(id) {
+  if (!confirm('Disconnect this number?')) return;
+  const res = await callEdge('disconnectWaNumber', { account_id: id });
+  if (res.success) { showToast('Number disconnected'); loadWaAccounts(); }
+  else showToast(res.message || 'Failed', true);
+}
 function logout() {
   authToken = null;
   localStorage.removeItem('auth_token');
@@ -452,6 +481,7 @@ async function showDashboard(data) {
   if (data.templates) { templates = data.templates; renderTemplates(); }
   await loadDashboardStats();
   await loadWAConnection();
+  await loadWaAccounts();
   await loadCampaigns();
   await loadTransactions();
   await loadContactsForSelect();
@@ -988,6 +1018,8 @@ window.startEmbeddedSignup = startEmbeddedSignup;
 window.loadInbox = loadInbox;
 window.loadTemplatePlaceholders = loadTemplatePlaceholders;
 window.switchTab = switchTab;
+window.loadWaAccounts = loadWaAccounts;
+window.disconnectWaNumber = disconnectWaNumber;
 </script>
 </body>
 </html>

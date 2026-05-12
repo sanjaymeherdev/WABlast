@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service — WaBlast by Graphicy Media</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #f7f9fc;
+      --surface: #ffffff;
+      --border: #e4eaf2;
+      --text: #0f1923;
+      --text2: #4a5a6e;
+      --text3: #8a9ab0;
+      --green: #22c165;
+      --green-dim: rgba(34,193,101,0.08);
+      --amber: #f5a623;
+      --amber-dim: rgba(245,166,35,0.08);
+      --red: #f04f6e;
+      --red-dim: rgba(240,79,110,0.08);
+      --accent: #0a1628;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    header {
+      background: var(--accent);
+      padding: 0 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      text-decoration: none;
+    }
+    .logo span { color: var(--green); }
+    .back-btn {
+      font-size: 13px;
+      color: var(--text3);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color .15s;
+    }
+    .back-btn:hover { color: var(--green); }
+
+    .hero {
+      background: var(--accent);
+      padding: 60px 40px 80px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(34,193,101,0.10) 0%, transparent 70%);
+      top: -100px; left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34,193,101,0.1);
+      border: 1px solid rgba(34,193,101,0.2);
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: inline-block; }
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .hero p { color: var(--text3); font-size: 14px; max-width: 480px; margin: 0 auto; }
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .hero-meta span { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+
+    .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+
+    .toc-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 32px;
+      margin: -40px auto 40px;
+      max-width: 820px;
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+    .toc-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text3);
+      margin-bottom: 16px;
+    }
+    .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+    .toc-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text2);
+      font-size: 13px;
+      font-weight: 500;
+      transition: all .15s;
+      border: 1px solid transparent;
+    }
+    .toc-item:hover { background: var(--green-dim); border-color: rgba(34,193,101,0.2); color: var(--green); }
+    .toc-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green);
+      background: var(--green-dim);
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 40px;
+      margin-bottom: 16px;
+      transition: border-color .2s;
+    }
+    .section:hover { border-color: rgba(34,193,101,0.3); }
+    .section-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+    .section-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--green);
+      background: var(--green-dim);
+      padding: 4px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+    .section h2 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .section p { color: var(--text2); margin-bottom: 14px; font-size: 14.5px; }
+    .section p:last-child { margin-bottom: 0; }
+    .section ul { list-style: none; margin: 12px 0; }
+    .section ul li {
+      padding: 6px 0 6px 22px;
+      position: relative;
+      color: var(--text2);
+      font-size: 14.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section ul li:last-child { border-bottom: none; }
+    .section ul li::before { content: '→'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+    strong { color: var(--text); font-weight: 600; }
+
+    .warning-box {
+      background: var(--red-dim);
+      border: 1px solid rgba(240,79,110,0.2);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+    .warning-box p { color: var(--text); font-size: 13.5px; margin: 0; }
+
+    .info-box {
+      background: var(--amber-dim);
+      border: 1px solid rgba(245,166,35,0.2);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+    .info-box p { color: var(--text); font-size: 13.5px; margin: 0; }
+
+    .highlight-box {
+      background: var(--green-dim);
+      border: 1px solid rgba(34,193,101,0.2);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 16px 0;
+    }
+    .highlight-box p { color: var(--text); font-size: 13.5px; margin: 0; }
+
+    .contact-card {
+      background: var(--accent);
+      border-radius: 20px;
+      padding: 36px 40px;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .contact-card h2 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; margin-bottom: 20px; }
+    .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    .contact-item { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px 18px; }
+    .contact-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--green); margin-bottom: 6px; }
+    .contact-value { font-size: 14px; color: #fff; word-break: break-all; }
+
+    footer { text-align: center; padding: 40px 24px; color: var(--text3); font-size: 12px; }
+    footer a { color: var(--green); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      header { padding: 0 20px; }
+      .hero { padding: 40px 20px 60px; }
+      .toc-card { margin: -30px 16px 30px; padding: 20px; }
+      .section { padding: 24px 20px; }
+      .contact-card { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo">Wa<span>Blast</span></a>
+  <a href="/" class="back-btn">← Back to App</a>
+</header>
+
+<div class="hero">
+  <div class="hero-tag"><span class="dot"></span> Legal Document</div>
+  <h1>Terms of Service</h1>
+  <p>Please read these terms carefully before using WaBlast. By using our platform, you agree to be bound by these terms.</p>
+  <div class="hero-meta">
+    <span><span class="dot"></span> Effective: January 1, 2025</span>
+    <span><span class="dot"></span> Last Updated: May 2025</span>
+    <span><span class="dot"></span> Governed by Indian Law</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="toc-card">
+    <div class="toc-title">Table of Contents</div>
+    <div class="toc-grid">
+      <a href="#s1" class="toc-item"><span class="toc-num">1</span> Acceptance of Terms</a>
+      <a href="#s2" class="toc-item"><span class="toc-num">2</span> Description of Service</a>
+      <a href="#s3" class="toc-item"><span class="toc-num">3</span> Eligibility</a>
+      <a href="#s4" class="toc-item"><span class="toc-num">4</span> Account Responsibilities</a>
+      <a href="#s5" class="toc-item"><span class="toc-num">5</span> Acceptable Use</a>
+      <a href="#s6" class="toc-item"><span class="toc-num">6</span> WhatsApp Compliance</a>
+      <a href="#s7" class="toc-item"><span class="toc-num">7</span> Credits & Payments</a>
+      <a href="#s8" class="toc-item"><span class="toc-num">8</span> Intellectual Property</a>
+      <a href="#s9" class="toc-item"><span class="toc-num">9</span> Disclaimer</a>
+      <a href="#s10" class="toc-item"><span class="toc-num">10</span> Limitation of Liability</a>
+      <a href="#s11" class="toc-item"><span class="toc-num">11</span> Termination</a>
+      <a href="#s12" class="toc-item"><span class="toc-num">12</span> Governing Law</a>
+      <a href="#s13" class="toc-item"><span class="toc-num">13</span> Contact Us</a>
+    </div>
+  </div>
+
+  <div class="section" id="s1">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>Acceptance of Terms</h2>
+    </div>
+    <p>By accessing or using WaBlast ("the Service"), operated by <strong>Graphicy Media</strong> (Udyam Registered, India), you agree to be bound by these Terms of Service and all applicable laws and regulations.</p>
+    <p>If you do not agree with any of these terms, you are prohibited from using or accessing this service. These terms apply to all users, including businesses and individuals.</p>
+    <div class="highlight-box">
+      <p>✅ By clicking "Sign Up" or using WaBlast, you confirm that you have read, understood, and agree to these Terms of Service.</p>
+    </div>
+  </div>
+
+  <div class="section" id="s2">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>Description of Service</h2>
+    </div>
+    <p>WaBlast is a WhatsApp Business messaging platform that allows registered businesses to:</p>
+    <ul>
+      <li>Connect their WhatsApp Business Account via Meta's official Embedded Signup</li>
+      <li>Create and manage Meta-approved message templates</li>
+      <li>Import and manage contact lists for bulk messaging campaigns</li>
+      <li>Schedule and send bulk WhatsApp messages using approved templates</li>
+      <li>Track campaign delivery status and message logs</li>
+      <li>Set up automated replies for incoming messages</li>
+    </ul>
+    <p>WaBlast operates as a Tech Provider using Meta's official WhatsApp Business Cloud API. All messaging goes through Meta's infrastructure.</p>
+  </div>
+
+  <div class="section" id="s3">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>Eligibility</h2>
+    </div>
+    <p>To use WaBlast, you must:</p>
+    <ul>
+      <li>Be at least 18 years of age</li>
+      <li>Be a registered business or authorized representative of one</li>
+      <li>Have a valid WhatsApp Business Account approved by Meta</li>
+      <li>Comply with Meta's WhatsApp Business Policy and Terms of Service</li>
+      <li>Not be located in a country under applicable sanctions or export restrictions</li>
+    </ul>
+    <p>WaBlast is intended for <strong>business use only</strong> and is not available for personal messaging purposes.</p>
+  </div>
+
+  <div class="section" id="s4">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2>Account Responsibilities</h2>
+    </div>
+    <p>You are responsible for maintaining the security of your WaBlast account:</p>
+    <ul>
+      <li>Keep your login credentials confidential and do not share your account</li>
+      <li>Immediately notify us of any unauthorized use of your account</li>
+      <li>You are responsible for all activity that occurs under your account</li>
+      <li>Ensure your WhatsApp Business Account credentials are kept secure</li>
+      <li>Do not attempt to access another user's account or data</li>
+    </ul>
+    <p>Graphicy Media is not liable for any loss or damage arising from your failure to maintain account security.</p>
+  </div>
+
+  <div class="section" id="s5">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>Acceptable Use Policy</h2>
+    </div>
+    <p>You agree to use WaBlast only for lawful purposes. You must NOT use the service to:</p>
+    <ul>
+      <li>Send spam, unsolicited messages, or messages to contacts who have not opted in</li>
+      <li>Send illegal, harmful, threatening, abusive, or fraudulent content</li>
+      <li>Violate Meta's WhatsApp Business Policy or Messaging Guidelines</li>
+      <li>Impersonate any person or organization</li>
+      <li>Distribute malware, phishing links, or any malicious content</li>
+      <li>Send messages that violate any applicable law or regulation in India or internationally</li>
+      <li>Resell or sublicense access to WaBlast without written permission</li>
+      <li>Reverse engineer, decompile, or attempt to extract source code</li>
+    </ul>
+    <div class="warning-box">
+      <p>⚠️ Violation of this policy may result in immediate account suspension and reporting to Meta and relevant authorities.</p>
+    </div>
+  </div>
+
+  <div class="section" id="s6">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2>WhatsApp Compliance</h2>
+    </div>
+    <p>As a user of WaBlast, you are solely responsible for ensuring that all your WhatsApp messaging activities comply with:</p>
+    <ul>
+      <li>Meta's <a href="https://www.whatsapp.com/legal/business-policy" target="_blank" style="color:var(--green)">WhatsApp Business Policy</a></li>
+      <li>Meta's <a href="https://developers.facebook.com/terms/dfc_platform_terms/" target="_blank" style="color:var(--green)">Platform Terms</a></li>
+      <li>WhatsApp's opt-in requirements — all recipients must have explicitly consented to receive messages</li>
+      <li>Applicable Indian telecommunications laws and the TRAI regulations</li>
+    </ul>
+    <div class="info-box">
+      <p>📋 All message templates must be approved by Meta before sending. WaBlast submits templates on your behalf but cannot guarantee Meta's approval decisions.</p>
+    </div>
+    <p>Graphicy Media is not responsible for any actions taken by Meta against your WhatsApp Business Account due to policy violations on your part.</p>
+  </div>
+
+  <div class="section" id="s7">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2>Credits &amp; Payments</h2>
+    </div>
+    <p>WaBlast operates on a credit-based system:</p>
+    <ul>
+      <li>Credits are purchased in advance and deducted per message sent</li>
+      <li>New accounts receive complimentary credits upon registration</li>
+      <li>Credits are non-refundable once purchased, except in cases of technical error on our part</li>
+      <li>Unused credits do not expire unless your account is terminated for violation of these terms</li>
+      <li>Prices are in Indian Rupees (INR) and inclusive of applicable taxes</li>
+      <li>We reserve the right to change credit pricing with 30 days notice</li>
+    </ul>
+    <div class="info-box">
+      <p>💳 Refund requests due to technical errors must be submitted within 7 days to graphicyin@gmail.com with transaction details.</p>
+    </div>
+  </div>
+
+  <div class="section" id="s8">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2>Intellectual Property</h2>
+    </div>
+    <p>All content, features, and functionality of WaBlast — including but not limited to software, text, graphics, logos, and design — are the exclusive property of <strong>Graphicy Media</strong> and are protected by applicable intellectual property laws.</p>
+    <ul>
+      <li>You may not copy, modify, distribute, or create derivative works without written permission</li>
+      <li>Your data (contacts, templates, campaigns) remains your property</li>
+      <li>You grant Graphicy Media a limited license to process your data solely to provide the service</li>
+      <li>The WaBlast name, logo, and branding are trademarks of Graphicy Media</li>
+    </ul>
+  </div>
+
+  <div class="section" id="s9">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <h2>Disclaimer of Warranties</h2>
+    </div>
+    <p>WaBlast is provided on an <strong>"as is" and "as available"</strong> basis without warranties of any kind, either express or implied.</p>
+    <ul>
+      <li>We do not guarantee uninterrupted or error-free service</li>
+      <li>Message delivery depends on Meta's WhatsApp infrastructure, which is outside our control</li>
+      <li>Template approval decisions are made solely by Meta and we cannot guarantee approval</li>
+      <li>We are not responsible for downtime caused by Meta's API or third-party services</li>
+    </ul>
+    <div class="warning-box">
+      <p>⚠️ Graphicy Media does not warrant that the service will meet your specific business requirements or that results obtained from using the service will be accurate or reliable.</p>
+    </div>
+  </div>
+
+  <div class="section" id="s10">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <h2>Limitation of Liability</h2>
+    </div>
+    <p>To the maximum extent permitted by applicable Indian law, Graphicy Media shall not be liable for:</p>
+    <ul>
+      <li>Any indirect, incidental, special, or consequential damages</li>
+      <li>Loss of profits, revenue, data, or business opportunities</li>
+      <li>Damages arising from unauthorized access to your account</li>
+      <li>Actions taken by Meta against your WhatsApp Business Account</li>
+      <li>Message delivery failures or delays due to Meta's infrastructure</li>
+    </ul>
+    <p>Our total liability to you for any claim arising out of or related to these terms shall not exceed the amount you paid to Graphicy Media in the 3 months preceding the claim.</p>
+  </div>
+
+  <div class="section" id="s11">
+    <div class="section-header">
+      <span class="section-num">11</span>
+      <h2>Termination</h2>
+    </div>
+    <p>Either party may terminate the service relationship:</p>
+    <ul>
+      <li>You may delete your account at any time by contacting graphicyin@gmail.com</li>
+      <li>We may suspend or terminate your account immediately for violation of these terms</li>
+      <li>We may terminate accounts that have been inactive for more than 12 months with prior notice</li>
+      <li>Upon termination, your data will be deleted within 30 days</li>
+      <li>Unused credits are non-refundable upon voluntary account deletion</li>
+    </ul>
+    <p>Termination does not relieve you of any obligations or liabilities incurred prior to termination.</p>
+  </div>
+
+  <div class="section" id="s12">
+    <div class="section-header">
+      <span class="section-num">12</span>
+      <h2>Governing Law &amp; Disputes</h2>
+    </div>
+    <p>These Terms of Service shall be governed by and construed in accordance with the laws of <strong>India</strong>, without regard to its conflict of law provisions.</p>
+    <ul>
+      <li>Any disputes shall be subject to the exclusive jurisdiction of the courts of India</li>
+      <li>We encourage resolving disputes amicably by contacting us first at graphicyin@gmail.com</li>
+      <li>If informal resolution fails, disputes may be referred to arbitration under the Arbitration and Conciliation Act, 1996</li>
+    </ul>
+    <div class="highlight-box">
+      <p>🇮🇳 Graphicy Media is a Udyam Registered business operating under Indian law. These terms comply with the Information Technology Act, 2000 and the Digital Personal Data Protection Act, 2023.</p>
+    </div>
+  </div>
+
+  <div class="contact-card" id="s13">
+    <h2>Contact Us</h2>
+    <p style="color:rgba(255,255,255,0.6);margin-bottom:20px;font-size:14px;">For questions about these Terms of Service or any legal matters, contact us:</p>
+    <div class="contact-grid">
+      <div class="contact-item">
+        <div class="contact-label">Company</div>
+        <div class="contact-value">Graphicy Media</div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-label">Email</div>
+        <div class="contact-value">graphicyin@gmail.com</div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-label">Phone</div>
+        <div class="contact-value">+91 7504704502</div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-label">Registration</div>
+        <div class="contact-value">Udyam Registered, India</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>© 2025 Graphicy Media. All rights reserved. &nbsp;·&nbsp; <a href="/privacy">Privacy Policy</a> &nbsp;·&nbsp; <a href="/terms">Terms of Service</a></p>
+  <p style="margin-top:8px;">WaBlast is a product of Graphicy Media, Udyam Registered Business, India.</p>
+</footer>
+
+</body>
+</html>

@@ -616,7 +616,174 @@
       font-size: 12px; color: var(--text3); text-align: center; margin: 10px 0;
       min-height: 20px;
     }
-
+  .guide-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  text-decoration: none;
+  transition: all .15s;
+}
+.guide-pill:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-dim);
+}
+ 
+.guide-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 26px;
+  margin-bottom: 16px;
+}
+ 
+.guide-section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+ 
+.guide-step-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+  background: var(--green-dim);
+  border: 1px solid rgba(34,209,114,0.2);
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+ 
+.guide-section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+ 
+.guide-section-sub {
+  font-size: 12px;
+  color: var(--text2);
+}
+ 
+.guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+ 
+.guide-step {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.guide-step:last-child { border-bottom: none; padding-bottom: 0; }
+.guide-step:first-child { padding-top: 0; }
+ 
+.guide-step-icon {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  background: var(--surface2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+ 
+.guide-step-body { flex: 1; }
+ 
+.guide-step-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+ 
+.guide-step-desc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+}
+ 
+.guide-callout {
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 16px;
+}
+.guide-callout-green { background: var(--green-dim); border: 1px solid rgba(34,209,114,0.2); color: var(--text); }
+.guide-callout-amber { background: var(--amber-dim); border: 1px solid rgba(245,166,35,0.2); color: var(--text); }
+.guide-callout-red   { background: var(--red-dim);   border: 1px solid rgba(240,79,110,0.2);  color: var(--text); }
+ 
+.guide-credit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.guide-credit-card {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+}
+.guide-credit-icon { font-size: 24px; margin-bottom: 8px; }
+.guide-credit-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--green); }
+.guide-credit-desc { font-size: 11px; color: var(--text3); }
+ 
+.guide-faq-list { display: flex; flex-direction: column; gap: 0; }
+.guide-faq-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.guide-faq-item:last-child { border-bottom: none; padding-bottom: 0; }
+.guide-faq-item:first-child { padding-top: 0; }
+.guide-faq-q {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.guide-faq-q::before {
+  content: 'Q';
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--green);
+  background: var(--green-dim);
+  padding: 2px 6px;
+  border-radius: 5px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.guide-faq-a {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+  padding-left: 26px;
+}
     /* ════════════════════════════════════════
        EMPTY STATES
     ════════════════════════════════════════ */
@@ -683,6 +850,7 @@
       <div class="nav-item" data-tab="contacts"><span class="nav-icon">👥</span> Contacts</div>
       <div class="nav-item" data-tab="campaigns"><span class="nav-icon">🚀</span> Campaigns</div>
       <div class="nav-item" data-tab="logs"><span class="nav-icon">📝</span> Campaign Logs</div>
+      <div class="nav-item" data-tab="guide"><span class="nav-icon">📖</span> User Guide</div>
     </div>
     <div class="nav-section">
       <div class="nav-section-label">Account</div>
@@ -846,7 +1014,324 @@
         <div id="campaignLogsList"><div class="empty-state"><p>Select a campaign above</p></div></div>
       </div>
     </div>
-
+<div class="tab-panel" id="tab-guide">
+  <div class="page-header">
+    <div class="page-title">User Guide</div>
+    <div class="page-sub">Everything you need to know about using WaBlast</div>
+  </div>
+ 
+  <!-- Quick Links -->
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px;">
+    <a href="/privacy" target="_blank" class="guide-pill">🔒 Privacy Policy</a>
+    <a href="/terms" target="_blank" class="guide-pill">📋 Terms of Service</a>
+    <a href="mailto:graphicyin@gmail.com?subject=Refund Request" class="guide-pill">💳 Refund Policy</a>
+    <a href="mailto:graphicyin@gmail.com" class="guide-pill">✉️ Contact Support</a>
+  </div>
+ 
+  <!-- Getting Started -->
+  <div class="guide-section">
+    <div class="guide-section-header">
+      <div class="guide-step-badge">01</div>
+      <div>
+        <div class="guide-section-title">Getting Started</div>
+        <div class="guide-section-sub">Set up your account and connect your WhatsApp number</div>
+      </div>
+    </div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-icon">👤</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Create your account</div>
+          <div class="guide-step-desc">Sign up with your email and password on the login screen. New accounts receive free credits to get started. You can also sign in with Google for quick access.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">📱</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Connect your WhatsApp Business Number</div>
+          <div class="guide-step-desc">Go to <strong>Account → Connected Numbers</strong> and click <strong>"Connect Number"</strong>. A Meta login popup will open — log in with the Facebook account linked to your WhatsApp Business Account and follow the steps. Your number will appear in the list once connected.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">💎</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Buy Credits</div>
+          <div class="guide-step-desc">Each message sent costs 1 credit. Click the credit widget in the sidebar or go to <strong>Settings → Credits</strong> to purchase a credit pack. Credits never expire as long as your account is active.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- Templates -->
+  <div class="guide-section">
+    <div class="guide-section-header">
+      <div class="guide-step-badge">02</div>
+      <div>
+        <div class="guide-section-title">Creating Message Templates</div>
+        <div class="guide-section-sub">Templates must be approved by Meta before you can send them</div>
+      </div>
+    </div>
+    <div class="guide-callout guide-callout-amber">
+      ⚠️ WhatsApp requires all bulk messages to use pre-approved templates. You cannot send free-form messages in bulk — only template messages are allowed.
+    </div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-icon">📝</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Open the Template Builder</div>
+          <div class="guide-step-desc">Go to <strong>Templates</strong> in the sidebar and click <strong>"+ New"</strong>. The template builder opens on the left with a live WhatsApp preview on the right.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">🏷️</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Fill in Basic Info</div>
+          <div class="guide-step-desc">Enter a <strong>Template Name</strong> (lowercase, underscores only — e.g. <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">welcome_message</code>), choose a <strong>Category</strong> (Marketing, Utility, or Authentication), and select a <strong>Language</strong>.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">🖼️</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Add a Header (Optional)</div>
+          <div class="guide-step-desc">Choose from None, Text, Image, Video, Document, or Location. For media headers, paste a public URL to your file. This appears at the top of the WhatsApp message bubble.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">💬</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Write the Body</div>
+          <div class="guide-step-desc">Type your message in the Body field. Use <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">{{1}}</code>, <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">{{2}}</code> etc. for personalization (e.g. contact name). Supports <strong>*bold*</strong>, <em>_italic_</em>, and ~strikethrough~. The preview updates live as you type.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">🔘</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Add Buttons (Optional)</div>
+          <div class="guide-step-desc">Add up to 10 buttons: <strong>Quick Reply</strong> (tap to reply), <strong>URL</strong> (opens a link), <strong>Phone</strong> (calls a number), or <strong>Copy Code</strong> (copies a coupon). Buttons appear below the message bubble.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">🚀</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Submit for Review</div>
+          <div class="guide-step-desc">Click <strong>"Submit for Review"</strong>. Meta typically reviews templates within a few minutes to a few hours. You'll see the status change from <span class="badge badge-amber">PENDING</span> to <span class="badge badge-green">APPROVED</span> or <span class="badge badge-red">REJECTED</span> automatically.</div>
+        </div>
+      </div>
+    </div>
+    <div class="guide-callout guide-callout-green">
+      💡 <strong>Tip:</strong> Marketing templates have stricter review. Use clear, non-spammy language. Utility templates (order updates, alerts) get approved faster.
+    </div>
+  </div>
+ 
+  <!-- Contacts -->
+  <div class="guide-section">
+    <div class="guide-section-header">
+      <div class="guide-step-badge">03</div>
+      <div>
+        <div class="guide-section-title">Managing Contacts</div>
+        <div class="guide-section-sub">Import your recipient list before creating campaigns</div>
+      </div>
+    </div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-icon">📋</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Paste CSV</div>
+          <div class="guide-step-desc">Go to <strong>Contacts</strong> and paste contacts directly in the text area in this format: <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">Name, Phone, Message</code> — one per line. Phone numbers can be 10 digits (auto-prefixed with 91) or full format with country code.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">📁</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Import from CSV or Excel</div>
+          <div class="guide-step-desc">Upload a <strong>.csv</strong> or <strong>.xlsx</strong> file with columns: <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">name</code>, <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">phone</code>, <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">message</code>. Download the template file for the correct format.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">💾</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Save to Database</div>
+          <div class="guide-step-desc">After importing, click <strong>"Save to DB"</strong> to permanently store contacts. Unsaved contacts are lost on page refresh. Saved contacts appear in the campaign contact selector.</div>
+        </div>
+      </div>
+    </div>
+    <div class="guide-callout guide-callout-red">
+      🚫 <strong>Important:</strong> Only message contacts who have explicitly opted in to receive WhatsApp messages from your business. Sending unsolicited messages violates WhatsApp policy and can get your number banned.
+    </div>
+  </div>
+ 
+  <!-- Campaigns -->
+  <div class="guide-section">
+    <div class="guide-section-header">
+      <div class="guide-step-badge">04</div>
+      <div>
+        <div class="guide-section-title">Running Campaigns</div>
+        <div class="guide-section-sub">Send bulk messages to your contact list</div>
+      </div>
+    </div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-icon">📣</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Create a Campaign</div>
+          <div class="guide-step-desc">Go to <strong>Campaigns</strong>, enter a campaign name, select an <span class="badge badge-green">APPROVED</span> template, map placeholders to contact fields (name, phone, or custom text), and select contacts. Click <strong>"Create Campaign"</strong>.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">🗂️</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Map Placeholders</div>
+          <div class="guide-step-desc">If your template has <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">{{1}}</code>, <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">{{2}}</code> variables, map each to a contact field. For example, <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:12px;">{{1}}</code> → Contact Name will personalize each message with the recipient's name.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">▶️</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Start the Campaign</div>
+          <div class="guide-step-desc">Once created, the campaign is in <span class="badge badge-draft">draft</span> status. Click <strong>"▶ Start"</strong> to begin sending. Messages are sent with a random 5–15 second delay between each to avoid spam detection. You can <strong>"⏸ Pause"</strong> at any time.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">📊</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Track Delivery</div>
+          <div class="guide-step-desc">Go to <strong>Campaign Logs</strong>, select your campaign, and see per-message delivery status: <span class="badge badge-green">sent</span>, <span class="badge badge-blue">delivered</span>, <span class="badge badge-purple">read</span>, or <span class="badge badge-red">failed</span> with error reasons.</div>
+        </div>
+      </div>
+    </div>
+    <div class="guide-callout guide-callout-green">
+      💡 <strong>Tip:</strong> Leave contacts empty when creating a campaign to send to all saved contacts. Or hold Ctrl/Cmd to select specific contacts.
+    </div>
+  </div>
+ 
+  <!-- Settings -->
+  <div class="guide-section">
+    <div class="guide-section-header">
+      <div class="guide-step-badge">05</div>
+      <div>
+        <div class="guide-section-title">Settings & Auto-Reply</div>
+        <div class="guide-section-sub">Configure sending limits and automated responses</div>
+      </div>
+    </div>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="guide-step-icon">⏱️</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Sending Limits</div>
+          <div class="guide-step-desc">Set hourly and daily message limits to stay within WhatsApp's messaging tier. New numbers are limited to 250 messages/day. Set to <strong>0</strong> for unlimited (not recommended for new numbers). Also configure min/max gap (seconds) between messages.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">🤖</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Auto-Reply</div>
+          <div class="guide-step-desc">Enable auto-reply to automatically respond to incoming messages. Without a Groq key, your <strong>System Prompt</strong> text is sent as a static reply. Add a <strong>Groq API key</strong> in Account settings to enable AI-powered dynamic replies using Llama 3.</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="guide-step-icon">🔑</div>
+        <div class="guide-step-body">
+          <div class="guide-step-title">Groq API Key (AI Replies)</div>
+          <div class="guide-step-desc">Get a free Groq API key at <a href="https://console.groq.com" target="_blank" style="color:var(--green)">console.groq.com</a>. Add it in <strong>Account → Groq API Key</strong>. Once set, incoming messages trigger an AI response based on your system prompt.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- Credits -->
+  <div class="guide-section">
+    <div class="guide-section-header">
+      <div class="guide-step-badge">06</div>
+      <div>
+        <div class="guide-section-title">Credits &amp; Billing</div>
+        <div class="guide-section-sub">Understanding how credits work</div>
+      </div>
+    </div>
+    <div class="guide-credit-grid">
+      <div class="guide-credit-card">
+        <div class="guide-credit-icon">💬</div>
+        <div class="guide-credit-title">1 Credit</div>
+        <div class="guide-credit-desc">= 1 message sent</div>
+      </div>
+      <div class="guide-credit-card">
+        <div class="guide-credit-icon">🎁</div>
+        <div class="guide-credit-title">Free Credits</div>
+        <div class="guide-credit-desc">On signup</div>
+      </div>
+      <div class="guide-credit-card">
+        <div class="guide-credit-icon">♾️</div>
+        <div class="guide-credit-title">No Expiry</div>
+        <div class="guide-credit-desc">Credits don't expire</div>
+      </div>
+      <div class="guide-credit-card">
+        <div class="guide-credit-icon">💳</div>
+        <div class="guide-credit-title">Buy Anytime</div>
+        <div class="guide-credit-desc">Click the sidebar widget</div>
+      </div>
+    </div>
+    <div class="guide-callout guide-callout-amber" style="margin-top:16px;">
+      💳 <strong>Refund Policy:</strong> Credits are non-refundable once purchased except in case of a technical error. For refund requests, email <a href="mailto:graphicyin@gmail.com" style="color:var(--amber)">graphicyin@gmail.com</a> within 7 days with your transaction details.
+    </div>
+  </div>
+ 
+  <!-- FAQ -->
+  <div class="guide-section">
+    <div class="guide-section-header">
+      <div class="guide-step-badge">07</div>
+      <div>
+        <div class="guide-section-title">Frequently Asked Questions</div>
+        <div class="guide-section-sub">Common questions and answers</div>
+      </div>
+    </div>
+    <div class="guide-faq-list">
+      <div class="guide-faq-item">
+        <div class="guide-faq-q">Why was my template rejected?</div>
+        <div class="guide-faq-a">Meta rejects templates that are too promotional, contain prohibited content, or don't follow their guidelines. Try rephrasing with a clearer purpose, avoid all-caps, and don't include URLs in marketing templates unless necessary.</div>
+      </div>
+      <div class="guide-faq-item">
+        <div class="guide-faq-q">Why are messages sending slowly?</div>
+        <div class="guide-faq-a">WaBlast adds a 5–15 second random delay between messages to protect your number from being flagged as spam by WhatsApp. This is intentional and helps maintain your number's quality rating.</div>
+      </div>
+      <div class="guide-faq-item">
+        <div class="guide-faq-q">What is a quality rating?</div>
+        <div class="guide-faq-a">Meta assigns a quality rating (GREEN, YELLOW, RED) to your WhatsApp number based on how recipients interact with your messages. Too many blocks or reports lower your rating and reduce your daily messaging limit.</div>
+      </div>
+      <div class="guide-faq-item">
+        <div class="guide-faq-q">Can I send messages without a template?</div>
+        <div class="guide-faq-a">No. WhatsApp Business API only allows template messages for outbound bulk messaging. Free-form messages can only be sent within a 24-hour customer service window (when a customer messages you first).</div>
+      </div>
+      <div class="guide-faq-item">
+        <div class="guide-faq-q">How many messages can I send per day?</div>
+        <div class="guide-faq-a">New WhatsApp Business numbers start at 250 messages/day (Tier 1). As your number builds history and maintains a good quality rating, Meta automatically increases this to 1,000 → 10,000 → 100,000/day.</div>
+      </div>
+      <div class="guide-faq-item">
+        <div class="guide-faq-q">My campaign stopped mid-way, why?</div>
+        <div class="guide-faq-a">This usually happens when you run out of credits. Check your credit balance in the sidebar. If you have credits, check Campaign Logs for error messages — it could also be a Meta API rate limit or token expiry.</div>
+      </div>
+      <div class="guide-faq-item">
+        <div class="guide-faq-q">How do I disconnect my WhatsApp number?</div>
+        <div class="guide-faq-a">Go to <strong>Account → Connected Numbers</strong> and click <strong>"Disconnect"</strong> next to your number. This removes your number from WaBlast but does not affect your Meta WhatsApp Business Account.</div>
+      </div>
+      <div class="guide-faq-item">
+        <div class="guide-faq-q">Is my data safe?</div>
+        <div class="guide-faq-a">Yes. All data is stored encrypted on Supabase with row-level security. Your WhatsApp access tokens are encrypted at rest. We never share or sell your data. See our <a href="/privacy" target="_blank" style="color:var(--green)">Privacy Policy</a> for full details.</div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- Support -->
+  <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:28px;text-align:center;margin-bottom:20px;">
+    <div style="font-size:28px;margin-bottom:10px;">💬</div>
+    <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:6px;">Still need help?</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;">Our support team is available via email. We typically respond within 24 hours.</div>
+    <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+      <a href="mailto:graphicyin@gmail.com" class="btn btn-primary" style="text-decoration:none;">✉️ Email Support</a>
+      <a href="tel:+917504704502" class="btn btn-secondary" style="text-decoration:none;">📞 Call Us</a>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:14px;">graphicyin@gmail.com &nbsp;·&nbsp; +91 7504704502 &nbsp;·&nbsp; Graphicy Media, India</div>
+  </div>
+ 
+</div>
     <!-- ══ SETTINGS ══ -->
     <div class="tab-panel" id="tab-settings">
       <div class="page-header">

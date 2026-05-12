@@ -2295,7 +2295,7 @@ async function importFile() {
 }
 
 function downloadTemplate() {
-  const csv  = 'Name,Phone,Message\nJohn Doe,919876543210,Hi John!\n'
+  const csv  = 'Name,Phone,Group,Message\nJohn Doe,919876543210,Lead1,Hi John!\n'
   const blob = new Blob([csv], { type: 'text/csv' })
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')

@@ -24,7 +24,7 @@ const META_API_VERSION  = 'v20.0'
 const SUPABASE_URL      = process.env.SUPABASE_URL
 const SUPABASE_KEY      = process.env.SUPABASE_SERVICE_KEY        // service role key
 const EDGE_FN_URL       = `${SUPABASE_URL}/functions/v1/wablast`
-
+const META_CONFIG_ID = process.env.META_CONFIG_ID
 // Campaign worker config
 const WORKER_POLL_MS    = 5000   // check queue every 5 seconds
 const MSG_MIN_DELAY_MS  = 5000   // min delay between messages (5s)
@@ -233,7 +233,7 @@ app.get('/wa-connect', (_req, res) => {
           document.getElementById('connectBtn').disabled = false
         }
       }, {
-        config_id:     '${META_APP_ID}',   // use your Embedded Signup config ID here
+        config_id:     '${META_CONFIG_ID}',
         response_type: 'code',
         override_default_response_type: true,
         extras: {

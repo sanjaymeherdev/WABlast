@@ -294,8 +294,7 @@ app.post('/api/wa/connect', async (req, res) => {
       `https://graph.facebook.com/${META_API_VERSION}/oauth/access_token` +
       `?client_id=${META_APP_ID}` +
       `&client_secret=${META_APP_SECRET}` +
-      `&code=${encodeURIComponent(code)}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}`
+      `&code=${encodeURIComponent(code)}`
     )
     if (!tokenRes.ok || tokenRes.data.error)
       return res.status(400).json({ error: tokenRes.data.error?.message || 'Token exchange failed' })

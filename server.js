@@ -46,6 +46,33 @@ const activeCampaigns = {}
 // ================================================================
 // HELPERS
 // ================================================================
+async function updateCampaignStats(campaign_id, sent_count, failed_count) {
+  await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ 
+      sent_count: sent_count,
+      failed_count: failed_count,
+      updated_at: new Date().toISOString()
+    }),
+  })
+}
+
+async function insertCampaignLog(campaign_id, phone, contact_name, status, error_reason, wa_message_id = null) {
+  await sbFetch('/wb_campaign_logs', {
+    method: 'POST',
+    body: JSON.stringify({
+      campaign_id,
+      phone,
+      contact_name: contact_name || '',
+      status,
+      error_reason: error_reason || null,
+      wa_message_id,
+      credits_deducted: status === 'sent' ? 1 : 0,
+      created_at: new Date().toISOString(),
+      sent_at: status === 'sent' ? new Date().toISOString() : null
+    }),
+  })
+}
 async function sbFetch(path, opts = {}) {
   const url = `${SUPABASE_URL}/rest/v1${path}`
   const res = await fetch(url, {
@@ -552,9 +579,10 @@ async function runSendLoop(campaign_id) {
     }
     if (templateComponents.length > 0) payload.template.components = templateComponents
 
-    // Send via Meta
+       // Send via Meta
     let success = false
     let errorMsg = ''
+    let waMessageId = null
 
     try {
       const sendRes = await metaFetch(
@@ -566,6 +594,7 @@ async function runSendLoop(campaign_id) {
 
       if (sendRes.ok) {
         success = true
+        waMessageId = sendRes.data?.messages?.[0]?.id || null
         job.sent++
 
         // Deduct credit
@@ -577,14 +606,26 @@ async function runSendLoop(campaign_id) {
             body: JSON.stringify({ credits: Math.max(0, profile.credits - 1) }),
           })
         }
+        
+        // UPDATE CAMPAIGN SENT COUNT IN DB
+        await updateCampaignStats(campaign_id, job.sent, job.failed)
+        
+        // INSERT LOG TO DB
+        await insertCampaignLog(campaign_id, contact.phone, contact.name, 'sent', null, waMessageId)
+        
       } else {
         errorMsg = sendRes.data?.error?.message || 'Meta API error'
         job.failed++
+        
+        // UPDATE CAMPAIGN FAILED COUNT IN DB
+        await updateCampaignStats(campaign_id, job.sent, job.failed)
+        
+        // INSERT FAILED LOG TO DB
+        await insertCampaignLog(campaign_id, contact.phone, contact.name, 'failed', errorMsg)
 
         // Check out of credits
         if (sendRes.data?.error?.code === 131045 || errorMsg.includes('credit')) {
           job.status = 'stopped'
-          job.log.push({ time: new Date().toISOString(), phone: contact.phone, name: contact.name || '', status: 'stopped', error: 'Out of credits' })
           await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
             method: 'PATCH', body: JSON.stringify({ status: 'paused' }),
           })
@@ -594,6 +635,12 @@ async function runSendLoop(campaign_id) {
     } catch (err) {
       errorMsg = err.message
       job.failed++
+      
+      // UPDATE CAMPAIGN FAILED COUNT IN DB
+      await updateCampaignStats(campaign_id, job.sent, job.failed)
+      
+      // INSERT FAILED LOG TO DB
+      await insertCampaignLog(campaign_id, contact.phone, contact.name, 'failed', errorMsg)
     }
 
     // Add to log

@@ -993,10 +993,12 @@
           <div id="campaignPlaceholderMapping" style="margin-top:12px;"></div>
          <span class="form-label">Contact Group</span>
 <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">Select a group to send to, or "All Contacts" to send to everyone.</div>
-<select id="campaignGroupSelect">
+<select id="campaignGroupSelect" onchange="updateCampaignContactCount()">
   <option value="">All Contacts</option>
 </select>
-<div id="campaignGroupCount" style="font-size:11px;color:var(--text3);margin-top:6px;"></div>
+<div id="campaignGroupCount" style="font-size:13px;font-weight:600;margin-top:8px;padding:8px;background:var(--surface2);border-radius:10px;">
+  <span id="campaignGroupCountNum">0</span> contacts will receive this message
+</div>
           <div class="btn-row">
             <button class="btn btn-primary" onclick="createCampaign()">Create Campaign</button>
           </div>
@@ -1645,7 +1647,6 @@ let campaigns    = []
 let selectedPack = null
 let currentPaymentOrderId  = null
 let paymentPollInterval    = null
-let templatePollingTimers  = {}
 let buttonCount  = 0
 let currentHeaderType = 'NONE'
 
@@ -1897,7 +1898,29 @@ function renderTemplates() {
       </div>
     </div>`).join('')
 }
-
+async function refreshTemplateStatus() {
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.textContent = '⟳ Refreshing...';
+  btn.disabled = true;
+  
+  try {
+    const res = await callEdge('listTemplates', { include_pending: true });
+    if (res.success && res.templates) {
+      templates = res.templates;
+      renderTemplates();
+      loadTemplatesForCampaignSelect();
+      showToast('Template statuses refreshed from Meta');
+    } else {
+      showToast('Failed to refresh: ' + (res.message || 'Unknown error'), true);
+    }
+  } catch (err) {
+    showToast('Error refreshing templates', true);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
 function previewTemplate(id) {
   const tpl = templates.find(t => t.id === id)
   if (!tpl) return
@@ -2169,37 +2192,12 @@ async function submitTemplate() {
       renderTemplates()
       loadTemplatesForCampaignSelect()
       // Start lightweight polling as fallback (webhook is primary)
-      startTemplatePolling(res.template.id)
     }
     setTimeout(() => closeModal('templateModal'), 2000)
   } else {
     statusEl.textContent = '❌ ' + (res.message || 'Submission failed')
     showToast(res.message || 'Submission failed', true)
   }
-}
-
-function startTemplatePolling(templateId) {
-  if (templatePollingTimers[templateId]) clearInterval(templatePollingTimers[templateId])
-  let attempts = 0
-  templatePollingTimers[templateId] = setInterval(async () => {
-    attempts++
-    // Stop after 20 attempts (the webhook should have fired by now)
-    if (attempts > 20) {
-      clearInterval(templatePollingTimers[templateId])
-      return
-    }
-    const res = await callEdge('pollTemplateStatus', { template_id: templateId })
-    if (res.success && res.is_final) {
-      clearInterval(templatePollingTimers[templateId])
-      const idx = templates.findIndex(t => t.id === templateId)
-      if (idx !== -1) {
-        templates[idx].status = res.status
-        renderTemplates()
-        loadTemplatesForCampaignSelect()
-        showToast(res.status === 'APPROVED' ? '🎉 Template APPROVED!' : `Template ${res.status}`, res.status !== 'APPROVED')
-      }
-    }
-  }, 30000) // Poll every 30s (much less aggressive — webhook does the real work)
 }
 
 async function deleteTemplate(id) {
@@ -2237,24 +2235,21 @@ function renderContacts() {
       <td><button onclick="removeContact(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;">×</button></td>
     </tr>`).join('')
 }
-function loadGroupsForSelect() {
-  const select = document.getElementById('campaignGroupSelect')
-  if (!select) return
-  const groups = [...new Set(contacts.map(c => c.group_name || 'Default').filter(Boolean))]
-  select.innerHTML = '<option value="">All Contacts</option>' +
+async function loadGroupsForSelect() {
+  const select = document.getElementById('campaignGroupSelect');
+  if (!select) return;
+  
+  const groups = [...new Set(contacts.map(c => c.group_name || 'Default').filter(Boolean))];
+  select.innerHTML = '<option value="">📋 All Contacts</option>' +
     groups.map(g => {
-      const count = contacts.filter(c => (c.group_name || 'Default') === g).length
-      return `<option value="${escapeHtml(g)}">${escapeHtml(g)} (${count})`
-    }).join('')
-
-  select.onchange = () => {
-    const g     = select.value
-    const count = g ? contacts.filter(c => (c.group_name || 'Default') === g).length : contacts.length
-    document.getElementById('campaignGroupCount').textContent =
-      `${count} contact${count !== 1 ? 's' : ''} will receive this campaign`
-  }
-  select.dispatchEvent(new Event('change'))
+      const count = contacts.filter(c => (c.group_name || 'Default') === g).length;
+      return `<option value="${escapeHtml(g)}">📁 ${escapeHtml(g)} (${count})</option>`
+    }).join('');
+  
+  // Update count for selected group
+  updateCampaignContactCount();
 }
+  
 function removeContact(i) {
   contacts.splice(i, 1); renderContacts(); loadContactsForSelect()
 }
@@ -2411,20 +2406,48 @@ function toggleCustomInput(pos) {
 async function createCampaign() {
   const name       = document.getElementById('campaignName').value.trim()
   const templateId = document.getElementById('campaignTemplateSelect').value
+  const groupName  = document.getElementById('campaignGroupSelect').value || null
+  
   if (!name)       { showToast('Campaign name required', true); return }
   if (!templateId) { showToast('Select an approved template', true); return }
 
+  // Get contact count first
+  let totalContacts = 0
+  try {
+    let url = `/rest/v1/wb_contacts?user_id=eq.${currentUser.id}&status=ne.unsubscribed&select=id`
+    if (groupName) {
+      url += `&group_name=eq.${encodeURIComponent(groupName)}`
+    }
+    
+    const res = await fetch(SUPABASE_URL + url, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${authToken}`
+      }
+    })
+    const contactsData = await res.json()
+    totalContacts = contactsData.length || 0
+  } catch (err) {
+    console.error('Failed to count contacts', err)
+  }
+
+  if (totalContacts === 0) {
+    showToast(`No contacts found${groupName ? ` in group "${groupName}"` : ''}. Please import contacts first.`, true)
+    return
+  }
+
   const tpl = templates.find(t => t.id === templateId)
   const placeholderMapping = {}
-  if (tpl?.placeholders) {
+  
+  if (tpl?.placeholders && tpl.placeholders.length > 0) {
     for (const ph of tpl.placeholders) {
       const sel = document.getElementById(`campMap_${ph.position}`)
       if (!sel) continue
       if (sel.value === 'custom') {
         const customVal = document.getElementById(`campCustom_${ph.position}`)?.value
         if (customVal) {
-          placeholderMapping[`{{${ph.position}}}`]     = 'custom'
-          placeholderMapping[`custom_${ph.position}`]  = customVal
+          placeholderMapping[`{{${ph.position}}}`] = 'custom'
+          placeholderMapping[`custom_${ph.position}`] = customVal
         }
       } else {
         placeholderMapping[`{{${ph.position}}}`] = sel.value
@@ -2432,6 +2455,24 @@ async function createCampaign() {
     }
   }
 
+  const res = await callEdge('createCampaign', {
+    name,
+    template_id: templateId,
+    group_name: groupName,
+    contact_ids: [],
+    placeholder_mapping: placeholderMapping,
+  })
+
+  if (res.success) {
+    showToast(`Campaign created! ${totalContacts} contacts will receive this message.`)
+    document.getElementById('campaignName').value = ''
+    await loadCampaigns()
+    // Reset the group select count display
+    updateCampaignContactCount()
+  } else {
+    showToast(res.message || 'Create failed', true)
+  }
+}
  const groupName = document.getElementById('campaignGroupSelect').value || null
 
   const res = await callEdge('createCampaign', {
@@ -2843,7 +2884,41 @@ async function sendPause() {
     loadSendCampaignSelect()
   }
 }
-
+async function updateCampaignContactCount() {
+  const groupName = document.getElementById('campaignGroupSelect')?.value || null
+  const countSpan = document.getElementById('campaignGroupCountNum')
+  
+  if (!countSpan) return
+  
+  countSpan.textContent = '...'
+  
+  try {
+    let url = `/rest/v1/wb_contacts?user_id=eq.${currentUser.id}&status=ne.unsubscribed&select=id`
+    if (groupName) {
+      url += `&group_name=eq.${encodeURIComponent(groupName)}`
+    }
+    
+    const res = await fetch(SUPABASE_URL + url, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${authToken}`
+      }
+    })
+    const data = await res.json()
+    const count = data.length || 0
+    countSpan.textContent = count
+    
+    // Also store in campaignGroupCount span if exists
+    const altSpan = document.getElementById('campaignGroupCount')
+    if (altSpan && altSpan !== countSpan) {
+      altSpan.innerHTML = `${count} contact${count !== 1 ? 's' : ''} will receive this message`
+    }
+  } catch (err) {
+    console.error('Failed to count contacts', err)
+    countSpan.textContent = '0'
+  }
+}
+  
 async function sendStop() {
   const id = activeSendCampaignId
   if (!id) return

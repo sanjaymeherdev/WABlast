@@ -422,12 +422,14 @@ app.post('/api/campaign/start', async (req, res) => {
       log:          existing?.log    || [],
     }
 
-    // Update campaign status in DB
+    // Update campaign status in DB — reset counts so stale data never shows
     await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
       method: 'PATCH',
       body: JSON.stringify({
         status:         'running',
         total_contacts: contacts.length,
+        sent_count:     0,
+        failed_count:   0,
         started_at:     new Date().toISOString(),
         updated_at:     new Date().toISOString(),
       }),

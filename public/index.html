@@ -2811,23 +2811,30 @@ function loadSendCampaignSelect() {
 function onSendCampaignChange() {
   const id = document.getElementById('sendCampaignSelect').value
   activeSendCampaignId = id || null
-  
-  // Reset all counters when dropdown changes or campaign is complete
   resetSendStats()
-  
+  stopSendPolling() // stop any existing poll
+
   if (!id) {
     document.getElementById('sendCampaignInfo').textContent = ''
     return
   }
-  
+
   const c = campaigns.find(c => c.id === id)
   if (c) {
-    document.getElementById('sendCampaignInfo').innerHTML = 
+    document.getElementById('sendCampaignInfo').innerHTML =
       `Template: ${c.template_name || '—'} · Group: ${c.group_name || 'All Contacts'}`
+    
+    // Show total contacts even before starting
+    document.getElementById('sendTotalCount').textContent = c.total_contacts || 0
+    document.getElementById('sendPendingCount').textContent = c.total_contacts || 0
+    document.getElementById('sendCurrentStatus').textContent = 
+      c.status === 'draft' ? 'Ready to start' : (c.status || 'Ready')
+    
+    // Only poll if already running/queued
+    if (c.status === 'running' || c.status === 'queued') {
+      startSendPolling(id)
+    }
   }
-  
-  // Fetch fresh status immediately
-  pollSendStatus()
 }
   
 function resetSendStats() {
@@ -2968,59 +2975,45 @@ async function pollSendStatus(id) {
 
   try {
     const res = await fetch(`/api/campaign/status/${campaignId}`).then(r => r.json())
-
-    if (!res.success) {
-      console.error('Status fetch failed:', res.message)
-      return
-    }
+    if (!res.success) return
 
     const sent = res.sent || 0
     const failed = res.failed || 0
     const total = res.total || 0
-    const pending = res.pending || 0
+    // pending: if total is 0 (draft, not yet queued), show total_contacts from local campaigns[]
+    const localCampaign = campaigns.find(c => c.id === campaignId)
+    const displayTotal = total || localCampaign?.total_contacts || 0
+    const pending = res.pending ?? (displayTotal - sent - failed)
 
     document.getElementById('sendSentCount').textContent = sent
-    document.getElementById('sendPendingCount').textContent = pending
+    document.getElementById('sendPendingCount').textContent = Math.max(0, pending)
     document.getElementById('sendFailedCount').textContent = failed
-    document.getElementById('sendTotalCount').textContent = total
+    document.getElementById('sendTotalCount').textContent = displayTotal
 
-    const pct = total > 0 ? Math.round(((sent + failed) / total) * 100) : 0
+    const pct = displayTotal > 0 ? Math.round(((sent + failed) / displayTotal) * 100) : 0
     document.getElementById('sendProgressBar').style.width = pct + '%'
 
     const statusMap = { 
-      'draft': 'Draft', 
-      'queued': 'Queued...', 
-      'running': 'Running...', 
-      'paused': 'Paused', 
-      'completed': 'Completed ✅', 
-      'failed': 'Failed ❌',
-      'idle': 'Ready'
+      draft: 'Ready to start', queued: 'Queued...', running: 'Running...', 
+      paused: 'Paused', completed: 'Completed ✅', failed: 'Failed ❌', unknown: 'Ready'
     }
-    document.getElementById('sendCurrentStatus').textContent = statusMap[res.status] || res.status
+    document.getElementById('sendCurrentStatus').textContent = 
+      statusMap[res.status] || res.status || 'Ready'
 
-    // If campaign completed or failed, refresh campaigns list and stop polling
     if (res.status === 'completed' || res.status === 'failed') {
       stopSendPolling()
       await loadCampaigns()
       loadSendCampaignSelect()
-      
-      // Auto-populate logs tab with this campaign
       const logSelect = document.getElementById('logCampaignSelect')
-      if (logSelect && campaignId) {
-        logSelect.value = campaignId
-        await loadCampaignLogs()
-      }
-      
+      if (logSelect && campaignId) { logSelect.value = campaignId; await loadCampaignLogs() }
       if (res.status === 'completed') {
         showToast('🎉 Campaign completed!')
-        // Reset active campaign
         activeSendCampaignId = null
         document.getElementById('sendCampaignSelect').value = ''
         resetSendStats()
         document.getElementById('sendCampaignInfo').textContent = ''
-      }
-      if (res.status === 'failed') {
-        showToast('❌ Campaign failed. Check logs for details.', true)
+      } else {
+        showToast('❌ Campaign failed. Check logs.', true)
       }
     }
   } catch (err) {

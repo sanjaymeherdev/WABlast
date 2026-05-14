@@ -2961,10 +2961,16 @@ async function pollSendStatus(id) {
   const statusMap = { running:'Running…', paused:'Paused', completed:'Completed ✅', stopped:'Stopped', idle:'Ready' }
   document.getElementById('sendCurrentStatus').textContent = statusMap[res.status] || res.status
 
-  if (res.status === 'completed' || res.status === 'stopped') {
+ if (res.status === 'completed' || res.status === 'stopped') {
     stopSendPolling()
     await loadCampaigns()
     loadSendCampaignSelect()
+    // Auto-populate logs tab with this campaign
+    const logSelect = document.getElementById('logCampaignSelect')
+    if (logSelect && campaignId) {
+      logSelect.value = campaignId
+      await loadCampaignLogs()
+    }
     if (res.status === 'completed') showToast('🎉 Campaign completed!')
   }
 

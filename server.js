@@ -49,14 +49,19 @@ async function sbFetch(path, opts = {}) {
   catch (_) { return { ok: res.ok, status: res.status, data: text } }
 }
 
-// All edge calls from server.js use the service key — the edge function
-// whitelists these actions before the user-JWT check.
+// Shared secret — must match INTERNAL_SECRET in the edge function env
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'wablast-internal-secret'
+
+// All edge calls from server.js use a custom header — NOT Authorization.
+// Supabase strips/re-signs the Authorization header on ingress, so a raw
+// service key comparison there always fails.
 async function callEdge(action, body = {}) {
   const res = await fetch(EDGE_FN_URL, {
     method: 'POST',
     headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type':      'application/json',
+      'Authorization':     `Bearer ${SUPABASE_KEY}`,  // still needed to reach the function
+      'x-internal-secret': INTERNAL_SECRET,            // used for the actual auth check
     },
     body: JSON.stringify({ action, ...body }),
   })

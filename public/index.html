@@ -2251,18 +2251,33 @@ function renderContacts() {
       <td><button onclick="removeContact(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;">×</button></td>
     </tr>`).join('')
 }
+  
 async function loadGroupsForSelect() {
   const select = document.getElementById('campaignGroupSelect');
   if (!select) return;
-  
-  const groups = [...new Set(contacts.map(c => c.group_name || 'Default').filter(Boolean))];
+
+  // Fetch directly from Supabase, not from local contacts[]
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/wb_contacts?user_id=eq.${currentUser.id}&select=group_name`,
+    {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${authToken}`
+      }
+    }
+  );
+  const rows = await res.json();
+
+  const groups = [...new Set(
+    (rows || []).map(c => c.group_name || 'Default').filter(Boolean)
+  )];
+
   select.innerHTML = '<option value="">📋 All Contacts</option>' +
     groups.map(g => {
-      const count = contacts.filter(c => (c.group_name || 'Default') === g).length;
-      return `<option value="${escapeHtml(g)}">📁 ${escapeHtml(g)} (${count})</option>`
+      const count = rows.filter(c => (c.group_name || 'Default') === g).length;
+      return `<option value="${g}">📁 ${escapeHtml(g)} (${count})</option>`;
     }).join('');
-  
-  // Update count for selected group
+
   updateCampaignContactCount();
 }
   
@@ -2793,7 +2808,7 @@ function switchTab(tabName) {
   if (tabName === 'send') { loadCampaigns().then(() => loadSendCampaignSelect()) }
   if (tabName === 'templates') { renderTemplates() }
   if (tabName === 'contacts')  { renderContacts() }
-  if (tabName === 'campaigns') { loadCampaigns(); loadTemplatesForCampaignSelect(); loadGroupsForSelect() }
+  if (tabName === 'campaigns') { loadCampaigns(); loadTemplatesForCampaignSelect(); await loadGroupsForSelect() }
   if (tabName === 'logs')      { loadCampaigns() }
   if (tabName === 'settings')  { loadSettings(); loadTransactions() }
   if (tabName === 'account')   { loadWaAccounts() }
@@ -2883,37 +2898,37 @@ async function sendPause() {
   }
 }
 async function updateCampaignContactCount() {
-  const groupName = document.getElementById('campaignGroupSelect')?.value || null
-  const countSpan = document.getElementById('campaignGroupCountNum')
-  
-  if (!countSpan) return
-  
-  countSpan.textContent = '...'
-  
+  const groupName = document.getElementById('campaignGroupSelect')?.value || null;
+  const countSpan = document.getElementById('campaignGroupCountNum');
+  if (!countSpan) return;
+
+  countSpan.textContent = '...';
+
+  let url = `${SUPABASE_URL}/rest/v1/wb_contacts?user_id=eq.${currentUser.id}&status=neq.unsubscribed&select=id`;
+  if (groupName && groupName.trim() !== '') {
+    url += `&group_name=eq.${encodeURIComponent(groupName)}`;
+  }
+
   try {
-    let url = `/rest/v1/wb_contacts?user_id=eq.${currentUser.id}&status=ne.unsubscribed&select=id`
-    if (groupName) {
-      url += `&group_name=eq.${encodeURIComponent(groupName)}`
-    }
-    
-    const res = await fetch(SUPABASE_URL + url, {
+    const res = await fetch(url, {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${authToken}`,
+        'Prefer': 'count=exact',
+        'Range': '0-0'
       }
-    })
-    const data = await res.json()
-    const count = data.length || 0
-    countSpan.textContent = count
-    
-    // Also store in campaignGroupCount span if exists
-    const altSpan = document.getElementById('campaignGroupCount')
-    if (altSpan && altSpan !== countSpan) {
-      altSpan.innerHTML = `${count} contact${count !== 1 ? 's' : ''} will receive this message`
-    }
+    });
+
+    // Read count from Content-Range header — no need to parse body
+    const range = res.headers.get('Content-Range');
+    const count = range ? parseInt(range.split('/')[1]) || 0 : 0;
+
+    countSpan.textContent = count;
+    document.getElementById('campaignGroupCount').innerHTML =
+      `<span id="campaignGroupCountNum">${count}</span> contact${count !== 1 ? 's' : ''} will receive this message`;
   } catch (err) {
-    console.error('Failed to count contacts', err)
-    countSpan.textContent = '0'
+    console.error('Failed to count contacts', err);
+    countSpan.textContent = '0';
   }
 }
   

@@ -104,86 +104,6 @@ function randomDelay(min, max) {
   return delay(Math.floor(Math.random() * (max - min + 1)) + min)
 }
 
-async function incrementSentCount(accountId) {
-  const accRes = await sbFetch(`/wa_accounts?id=eq.${accountId}&limit=1`)
-  const account = accRes.data?.[0]
-  if (!account) return
-  
-  const today = new Date().toISOString().split('T')[0]
-  
-  if (account.last_reset_date !== today) {
-    await sbFetch(`/wa_accounts?id=eq.${accountId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        messages_sent_today: 1,
-        last_reset_date: today,
-        updated_at: new Date().toISOString()
-      }),
-    })
-    return
-  }
-  
-  await sbFetch(`/wa_accounts?id=eq.${accountId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      messages_sent_today: (account.messages_sent_today || 0) + 1,
-      updated_at: new Date().toISOString()
-    }),
-  })
-}
-
-async function handleStopCommand(userId, phone, contactName, messageId) {
-  await sbFetch('/wb_blocklist', {
-    method: 'POST',
-    body: JSON.stringify({
-      user_id: userId,
-      phone: phone,
-      reason: 'STOP',
-      source: 'incoming_message',
-      original_message_id: messageId,
-      created_at: new Date().toISOString()
-    }),
-  })
-  
-  await sbFetch(`/wb_contacts?user_id=eq.${userId}&phone=eq.${phone}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      status: 'unsubscribed',
-      unsubscribed_at: new Date().toISOString()
-    }),
-  })
-  
-  console.log(`[STOP] ${phone} unsubscribed`)
-}
-
-async function updateCampaignStats(campaign_id, sent_count, failed_count) {
-  await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ 
-      sent_count: sent_count,
-      failed_count: failed_count,
-      updated_at: new Date().toISOString()
-    }),
-  })
-}
-
-async function insertCampaignLog(campaign_id, phone, contact_name, status, error_reason, wa_message_id = null) {
-  await sbFetch('/wb_campaign_logs', {
-    method: 'POST',
-    body: JSON.stringify({
-      campaign_id,
-      phone,
-      contact_name: contact_name || '',
-      status,
-      error_reason: error_reason || null,
-      wa_message_id,
-      credits_deducted: status === 'sent' ? 1 : 0,
-      created_at: new Date().toISOString(),
-      sent_at: status === 'sent' ? new Date().toISOString() : null
-    }),
-  })
-}
-
 // ================================================================
 // HEALTH CHECK
 // ================================================================
@@ -198,15 +118,9 @@ app.get('/health', (_req, res) => {
 // ================================================================
 // SERVE APP
 // ================================================================
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'))
-})
-app.get('/privacy', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'privacy.html'))
-})
-app.get('/terms', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'terms.html'))
-})
+app.get('/',        (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')))
+app.get('/privacy', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'privacy.html')))
+app.get('/terms',   (_req, res) => res.sendFile(path.join(__dirname, 'public', 'terms.html')))
 
 // ================================================================
 // WA EMBEDDED SIGNUP — STEP 1
@@ -305,10 +219,7 @@ app.post('/api/wa/connect', async (req, res) => {
     const accessToken = tokenRes.data.access_token
 
     let wabaId = null
-    const wabaRes = await metaFetch(
-      '/me/whatsapp_business_accounts?fields=id,name',
-      'GET', undefined, accessToken
-    )
+    const wabaRes = await metaFetch('/me/whatsapp_business_accounts?fields=id,name', 'GET', undefined, accessToken)
 
     if (wabaRes.ok && wabaRes.data.data?.length) {
       wabaId = wabaRes.data.data[0].id
@@ -388,143 +299,151 @@ app.get('/api/wa/accounts', async (req, res) => {
 })
 
 // ================================================================
-// CAMPAIGN — START (FIXED)
+// CAMPAIGN — START
+// All checks upfront. Send loop only fires the payload — nothing else.
+// Success/failure is tracked via webhook only.
 // ================================================================
 app.post('/api/campaign/start', async (req, res) => {
   const { campaign_id, user_id } = req.body
   if (!campaign_id || !user_id)
     return res.status(400).json({ error: 'campaign_id and user_id required' })
-  
+
   if (activeCampaigns[campaign_id]?.status === 'running')
     return res.status(400).json({ error: 'Campaign already running' })
 
   try {
-    // Get campaign
+    // ── 1. Load campaign ──────────────────────────────────────
     const campRes = await sbFetch(`/wb_campaigns?id=eq.${campaign_id}&user_id=eq.${user_id}&limit=1`)
     const campaign = campRes.data?.[0]
     if (!campaign) return res.status(404).json({ error: 'Campaign not found' })
 
-    // Get template
+    // ── 2. Load template ──────────────────────────────────────
     const tplRes = await sbFetch(`/wb_templates?id=eq.${campaign.template_id}&limit=1`)
     const template = tplRes.data?.[0]
-    if (!template) return res.status(404).json({ error: 'Template not found' })
-    if (template.status !== 'APPROVED')
-      return res.status(400).json({ error: 'Template is not approved' })
+    if (!template)                   return res.status(404).json({ error: 'Template not found' })
+    if (template.status !== 'APPROVED') return res.status(400).json({ error: 'Template is not APPROVED' })
 
-    // FIX: Build contact query properly
-    // Don't filter by status - all contacts are 'pending' initially
+    // ── 3. Load WA account (fresh token every start) ──────────
+    const accountRes = await sbFetch(`/wa_accounts?user_id=eq.${user_id}&is_active=eq.true&order=created_at.desc&limit=1`)
+    const account = accountRes.data?.[0]
+    if (!account) return res.status(400).json({ error: 'No WhatsApp account connected' })
+    if (account.quality_rating === 'RED')
+      return res.status(400).json({ error: 'Cannot send — your WhatsApp number quality rating is RED.' })
+
+    // ── 4. Load contacts ──────────────────────────────────────
     let contactQuery = `/wb_contacts?user_id=eq.${user_id}&select=*`
-    
-    // Only filter by group_name if campaign has one (and it's not empty/null)
     if (campaign.group_name && campaign.group_name.trim() !== '') {
       contactQuery += `&group_name=eq.${encodeURIComponent(campaign.group_name)}`
     }
-    // If no group_name or empty string, get ALL contacts (no group filter)
-    
-    console.log(`[campaign] Fetching contacts with query: ${contactQuery}`)
-    
     const contactsRes = await sbFetch(contactQuery)
     let contacts = contactsRes.data || []
-    
-    console.log(`[campaign] Found ${contacts.length} total contacts before filtering`)
-    
+
     if (!contacts.length) {
       const groupInfo = campaign.group_name ? ` in group "${campaign.group_name}"` : ''
-      return res.status(400).json({ error: `No contacts found${groupInfo}. Please import contacts first.` })
+      return res.status(400).json({ error: `No contacts found${groupInfo}.` })
     }
-    
-    // Check for blocklisted numbers
+
+    // ── 5. Remove blocklisted numbers ─────────────────────────
     const blocklistRes = await sbFetch(`/wb_blocklist?user_id=eq.${user_id}&select=phone`)
-    const blockedPhones = blocklistRes.data?.map(b => b.phone) || []
-    const filteredContacts = contacts.filter(c => !blockedPhones.includes(c.phone))
-    
-    console.log(`[campaign] After blocklist filter: ${filteredContacts.length} contacts`)
-    
-    if (!filteredContacts.length) 
-      return res.status(400).json({ error: 'All contacts are blocklisted' })
-    
-    contacts = filteredContacts
+    const blockedPhones = new Set((blocklistRes.data || []).map(b => b.phone))
+    contacts = contacts.filter(c => !blockedPhones.has(c.phone))
 
-    // Get WhatsApp account
-    const accountRes = await sbFetch(`/wa_accounts?user_id=eq.${user_id}&is_active=eq.true&limit=1`)
-    const account = accountRes.data?.[0]
-    if (!account) return res.status(400).json({ error: 'No WhatsApp account connected' })
-    
-    if (account.quality_rating === 'RED') {
-      return res.status(400).json({ 
-        error: 'Cannot start campaign. Your WhatsApp number quality rating is RED.' 
-      })
-    }
-    
-    if (account.quality_rating === 'YELLOW') {
-      console.log(`[warning] User ${user_id} has YELLOW quality rating`)
-    }
+    if (!contacts.length)
+      return res.status(400).json({ error: 'All contacts are blocklisted.' })
 
-    // Get user settings
-    const settingsRes = await sbFetch(`/wb_settings?user_id=eq.${user_id}&limit=1`)
-    const settings = settingsRes.data?.[0] || {}
-    
-    // Check daily limit
-    const dailyLimit = settings.day_limit || 0
-    if (dailyLimit > 0 && (account.messages_sent_today || 0) >= dailyLimit) {
-      return res.status(400).json({ 
-        error: `Daily limit reached. You have sent ${account.messages_sent_today || 0} of ${dailyLimit} messages today.` 
-      })
-    }
-
-    // Check credits
+    // ── 6. Check credits (must cover ALL contacts) ────────────
     const profileRes = await sbFetch(`/wb_profiles?id=eq.${user_id}&limit=1`)
     const profile = profileRes.data?.[0]
-    if (!profile || profile.credits < contacts.length)
+    if (!profile)
+      return res.status(400).json({ error: 'User profile not found.' })
+    if (profile.credits < contacts.length)
       return res.status(400).json({
-        error: `Insufficient credits. Need ${contacts.length}, have ${profile?.credits || 0}.`
+        error: `Insufficient credits. Need ${contacts.length}, have ${profile.credits}.`
       })
 
+    // ── 7. Check daily sending limit ──────────────────────────
+    const settingsRes = await sbFetch(`/wb_settings?user_id=eq.${user_id}&limit=1`)
+    const settings = settingsRes.data?.[0] || {}
+    const dailyLimit = settings.day_limit || 0
+
+    // Reset counter if it's a new day
+    const today = new Date().toISOString().split('T')[0]
+    let sentToday = account.messages_sent_today || 0
+    if (account.last_reset_date !== today) sentToday = 0
+
+    if (dailyLimit > 0 && sentToday >= dailyLimit)
+      return res.status(400).json({
+        error: `Daily limit reached (${sentToday}/${dailyLimit}). Try again tomorrow.`
+      })
+
+    // ── 8. Deduct ALL credits upfront atomically ──────────────
+    const newCredits = profile.credits - contacts.length
+    const deductRes = await sbFetch(`/wb_profiles?id=eq.${user_id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ credits: newCredits, updated_at: new Date().toISOString() }),
+    })
+    if (!deductRes.ok)
+      return res.status(500).json({ error: 'Failed to deduct credits. Please try again.' })
+
+    // Log the credit deduction
+    await sbFetch('/wb_credit_transactions', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id,
+        type:           'deduct',
+        amount:         -contacts.length,
+        balance_before: profile.credits,
+        balance_after:  newCredits,
+        description:    `Campaign: ${campaign.name}`,
+        ref_id:         campaign_id,
+        created_at:     new Date().toISOString(),
+      }),
+    })
+
+    // ── 9. Build send config ──────────────────────────────────
     const minGap = (settings.min_gap || 5) * 1000
     const maxGap = (settings.max_gap || 15) * 1000
 
-    // Get existing campaign state if paused
+    // Resume support: if was paused, continue from where it left off
     const existing = activeCampaigns[campaign_id]
-    const startIndex = existing?.status === 'paused' ? existing.currentIndex : 0
+    const startIndex = (existing?.status === 'paused') ? (existing.currentIndex || 0) : 0
 
     activeCampaigns[campaign_id] = {
       status:       'running',
       user_id,
       campaign,
       template,
-      account,
-      contacts:     contacts,
-      settings:     { minGap, maxGap },
+      account,      // fresh token captured here
+      contacts,
+      settings:     { minGap, maxGap, dailyLimit, sentToday },
       currentIndex: startIndex,
-      sent:         existing?.sent    || 0,
-      failed:       existing?.failed  || 0,
-      log:          existing?.log     || [],
+      sent:         existing?.sent   || 0,
+      failed:       existing?.failed || 0,
+      log:          existing?.log    || [],
     }
 
     // Update campaign status in DB
     await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
       method: 'PATCH',
-      body:   JSON.stringify({ 
-        status: 'running', 
+      body: JSON.stringify({
+        status:         'running',
         total_contacts: contacts.length,
-        started_at: new Date().toISOString() 
+        started_at:     new Date().toISOString(),
+        updated_at:     new Date().toISOString(),
       }),
     })
 
-    // Start the send loop
+    // Start the send loop (non-blocking)
     runSendLoop(campaign_id)
 
-    res.json({
-      success: true,
-      total:   contacts.length,
-      message: `Campaign started — ${contacts.length} contacts queued`,
-    })
+    res.json({ success: true, total: contacts.length, message: `Campaign started — ${contacts.length} contacts queued` })
 
   } catch (err) {
     console.error('[/api/campaign/start]', err.message)
     res.status(500).json({ error: err.message })
   }
 })
+
 // ================================================================
 // CAMPAIGN — PAUSE
 // ================================================================
@@ -537,7 +456,7 @@ app.post('/api/campaign/pause', async (req, res) => {
 
   job.status = 'paused'
   await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
-    method: 'PATCH', body: JSON.stringify({ status: 'paused' }),
+    method: 'PATCH', body: JSON.stringify({ status: 'paused', updated_at: new Date().toISOString() }),
   })
 
   res.json({ success: true, message: 'Campaign paused' })
@@ -551,10 +470,38 @@ app.post('/api/campaign/stop', async (req, res) => {
   if (!campaign_id) return res.status(400).json({ error: 'campaign_id required' })
 
   const job = activeCampaigns[campaign_id]
-  if (job) job.status = 'stopped'
+  if (job) {
+    // Refund unused credits
+    const remaining = job.contacts.length - job.currentIndex
+    if (remaining > 0) {
+      const profileRes = await sbFetch(`/wb_profiles?id=eq.${job.user_id}&limit=1`)
+      const profile = profileRes.data?.[0]
+      if (profile) {
+        const refunded = profile.credits + remaining
+        await sbFetch(`/wb_profiles?id=eq.${job.user_id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ credits: refunded, updated_at: new Date().toISOString() }),
+        })
+        await sbFetch('/wb_credit_transactions', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_id:        job.user_id,
+            type:           'refund',
+            amount:         remaining,
+            balance_before: profile.credits,
+            balance_after:  refunded,
+            description:    `Campaign stopped early: ${job.campaign.name}`,
+            ref_id:         campaign_id,
+            created_at:     new Date().toISOString(),
+          }),
+        })
+      }
+    }
+    job.status = 'stopped'
+  }
 
   await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
-    method: 'PATCH', body: JSON.stringify({ status: 'draft' }),
+    method: 'PATCH', body: JSON.stringify({ status: 'draft', updated_at: new Date().toISOString() }),
   })
 
   delete activeCampaigns[campaign_id]
@@ -574,21 +521,14 @@ app.get('/api/campaign/status/:campaign_id', async (req, res) => {
     if (dbCamp) {
       return res.json({
         status:  dbCamp.status,
-        sent:    dbCamp.sent_count || 0,
-        failed:  dbCamp.failed_count || 0,
+        sent:    dbCamp.sent_count    || 0,
+        failed:  dbCamp.failed_count  || 0,
         pending: Math.max(0, (dbCamp.total_contacts || 0) - (dbCamp.sent_count || 0) - (dbCamp.failed_count || 0)),
         total:   dbCamp.total_contacts || 0,
         log:     [],
       })
     }
-    return res.json({
-      status:  'idle',
-      sent:    0,
-      failed:  0,
-      pending: 0,
-      total:   0,
-      log:     [],
-    })
+    return res.json({ status: 'idle', sent: 0, failed: 0, pending: 0, total: 0, log: [] })
   }
 
   const total   = job.contacts.length
@@ -605,50 +545,43 @@ app.get('/api/campaign/status/:campaign_id', async (req, res) => {
 })
 
 // ================================================================
-// SEND LOOP
+// SEND LOOP — Simplified
+// Only job: build the payload and POST it to Meta.
+// Success/failure tracking is done by the webhook handler.
+// In-memory log is for the live UI only.
 // ================================================================
 async function runSendLoop(campaign_id) {
   const job = activeCampaigns[campaign_id]
   if (!job) return
 
   const { template, account, contacts, settings } = job
-  
-  if (account.quality_rating === 'RED') {
-    job.status = 'paused'
-    await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'paused' }),
-    })
-    console.log(`[campaign] ${campaign_id} paused due to RED quality`)
-    return
-  }
-  
   const placeholderMapping = job.campaign.placeholder_mapping || {}
 
   for (let i = job.currentIndex; i < contacts.length; i++) {
-    if (job.status === 'paused' || job.status === 'stopped') {
+    // Check pause/stop on every iteration
+    if (job.status !== 'running') {
       job.currentIndex = i
       return
     }
-    
-    const contact = contacts[i]
-    job.currentIndex = i + 1
 
-    const placeholders = template.placeholders || []
-    const orderedPositions = placeholders.slice().sort((a, b) => a.position - b.position)
-    const placeholderValues = orderedPositions.map(ph => {
-      const mappedField = placeholderMapping[`{{${ph.position}}}`]
-      if (mappedField === 'name')    return contact.name    || ''
-      if (mappedField === 'phone')   return contact.phone   || ''
-      if (mappedField === 'message') return contact.message || ''
-      if (mappedField && mappedField !== 'custom') return contact[mappedField] || ''
+    job.currentIndex = i + 1
+    const contact = contacts[i]
+
+    // ── Build template components ──────────────────────────────
+    const placeholders = (template.placeholders || []).slice().sort((a, b) => a.position - b.position)
+
+    const bodyParams = placeholders.map(ph => {
+      const field = placeholderMapping[`{{${ph.position}}}`]
+      if (field === 'name')    return contact.name    || ''
+      if (field === 'phone')   return contact.phone   || ''
+      if (field === 'message') return contact.message || ''
       const customVal = placeholderMapping[`custom_${ph.position}`]
-      if (customVal) return customVal
-      return ph.sample || ''
+      return customVal || ph.sample || ''
     })
 
     const templateComponents = []
 
+    // Header media (only for IMAGE / VIDEO / DOCUMENT)
     if (
       template.header_type &&
       template.header_type !== 'NONE' &&
@@ -658,20 +591,22 @@ async function runSendLoop(campaign_id) {
     ) {
       const mediaKey = template.header_type === 'IMAGE'    ? 'image'
                      : template.header_type === 'VIDEO'    ? 'video'
-                     : template.header_type === 'DOCUMENT' ? 'document' : 'image'
+                     : 'document'
       templateComponents.push({
         type: 'header',
         parameters: [{ type: mediaKey, [mediaKey]: { link: template.header_media_url } }],
       })
     }
 
-    if (placeholderValues.length > 0) {
+    // Body params
+    if (bodyParams.length > 0) {
       templateComponents.push({
         type: 'body',
-        parameters: placeholderValues.map(v => ({ type: 'text', text: String(v) })),
+        parameters: bodyParams.map(v => ({ type: 'text', text: String(v) })),
       })
     }
 
+    // ── Build final payload ────────────────────────────────────
     const payload = {
       messaging_product: 'whatsapp',
       to:                contact.phone,
@@ -679,14 +614,11 @@ async function runSendLoop(campaign_id) {
       template: {
         name:     template.name,
         language: { code: template.language || 'en_US' },
+        ...(templateComponents.length > 0 ? { components: templateComponents } : {}),
       },
     }
-    if (templateComponents.length > 0) payload.template.components = templateComponents
 
-    let success = false
-    let errorMsg = ''
-    let waMessageId = null
-
+    // ── Fire and log ───────────────────────────────────────────
     try {
       const sendRes = await metaFetch(
         `/${account.phone_number_id}/messages`,
@@ -695,56 +627,105 @@ async function runSendLoop(campaign_id) {
         account.access_token
       )
 
-      if (sendRes.ok) {
-        success = true
-        waMessageId = sendRes.data?.messages?.[0]?.id || null
+      if (sendRes.ok && sendRes.data?.messages?.[0]?.id) {
+        const waMessageId = sendRes.data.messages[0].id
         job.sent++
         job.log.push({ time: new Date().toISOString(), name: contact.name, phone: contact.phone, status: 'sent', error: null })
-        const profileRes = await sbFetch(`/wb_profiles?id=eq.${job.user_id}&limit=1`)
-        const profile = profileRes.data?.[0]
-        if (profile) {
-          await sbFetch(`/wb_profiles?id=eq.${job.user_id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ credits: Math.max(0, profile.credits - 1) }),
-          })
-        }
-        
-        await incrementSentCount(account.id)
-        await updateCampaignStats(campaign_id, job.sent, job.failed)
-        await insertCampaignLog(campaign_id, contact.phone, contact.name, 'sent', null, waMessageId)
-        
+
+        // Insert log row — delivery status will be updated by webhook
+        await sbFetch('/wb_campaign_logs', {
+          method: 'POST',
+          body: JSON.stringify({
+            campaign_id,
+            phone:           contact.phone,
+            contact_name:    contact.name || '',
+            status:          'sent',
+            delivery_status: 'sent',
+            wa_message_id:   waMessageId,
+            credits_deducted: 1,
+            created_at:      new Date().toISOString(),
+            sent_at:         new Date().toISOString(),
+          }),
+        })
+
+        // Update daily counter on the account row
+        await sbFetch(`/wa_accounts?id=eq.${account.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            messages_sent_today: (settings.sentToday || 0) + job.sent,
+            last_reset_date:     new Date().toISOString().split('T')[0],
+            updated_at:          new Date().toISOString(),
+          }),
+        })
+
       } else {
-        errorMsg = sendRes.data?.error?.message || 'Meta API error'
+        // Meta rejected the message
+        const errorMsg = sendRes.data?.error?.message || `Meta error code ${sendRes.status}`
+        console.error(`[send] failed for ${contact.phone}: ${errorMsg}`)
         job.failed++
         job.log.push({ time: new Date().toISOString(), name: contact.name, phone: contact.phone, status: 'failed', error: errorMsg })
-        await updateCampaignStats(campaign_id, job.sent, job.failed)
-        await insertCampaignLog(campaign_id, contact.phone, contact.name, 'failed', errorMsg)
 
-        if (sendRes.data?.error?.code === 131045 || errorMsg.includes('credit')) {
-          job.status = 'stopped'
-          await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
-            method: 'PATCH', body: JSON.stringify({ status: 'paused' }),
-          })
-          return
-        }
+        await sbFetch('/wb_campaign_logs', {
+          method: 'POST',
+          body: JSON.stringify({
+            campaign_id,
+            phone:           contact.phone,
+            contact_name:    contact.name || '',
+            status:          'failed',
+            delivery_status: 'failed',
+            error_reason:    errorMsg,
+            credits_deducted: 0,
+            created_at:      new Date().toISOString(),
+          }),
+        })
       }
     } catch (err) {
-      errorMsg = err.message
+      // Network / timeout error — log as failed, keep going
+      console.error(`[send] exception for ${contact.phone}: ${err.message}`)
       job.failed++
-      job.log.push({ time: new Date().toISOString(), name: contact.name, phone: contact.phone, status: 'failed', error: errorMsg })
-      await updateCampaignStats(campaign_id, job.sent, job.failed)
-      await insertCampaignLog(campaign_id, contact.phone, contact.name, 'failed', errorMsg)
+      job.log.push({ time: new Date().toISOString(), name: contact.name, phone: contact.phone, status: 'failed', error: err.message })
+
+      await sbFetch('/wb_campaign_logs', {
+        method: 'POST',
+        body: JSON.stringify({
+          campaign_id,
+          phone:           contact.phone,
+          contact_name:    contact.name || '',
+          status:          'failed',
+          delivery_status: 'failed',
+          error_reason:    err.message,
+          credits_deducted: 0,
+          created_at:      new Date().toISOString(),
+        }),
+      })
     }
 
+    // Update campaign stats in DB every message
+    await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        sent_count:   job.sent,
+        failed_count: job.failed,
+        updated_at:   new Date().toISOString(),
+      }),
+    })
+
+    // Gap between messages (skip after last one)
     if (i < contacts.length - 1 && job.status === 'running') {
       await randomDelay(settings.minGap, settings.maxGap)
     }
   }
 
+  // Loop finished naturally
   if (job.status === 'running') {
     job.status = 'completed'
     await sbFetch(`/wb_campaigns?id=eq.${campaign_id}`, {
-      method: 'PATCH', body: JSON.stringify({ status: 'completed', completed_at: new Date().toISOString() }),
+      method: 'PATCH',
+      body: JSON.stringify({
+        status:       'completed',
+        completed_at: new Date().toISOString(),
+        updated_at:   new Date().toISOString(),
+      }),
     })
     console.log(`[campaign] ${campaign_id} completed — sent:${job.sent} failed:${job.failed}`)
   }
@@ -770,6 +751,7 @@ app.get('/webhook', (req, res) => {
 // META WEBHOOK — EVENTS
 // ================================================================
 app.post('/webhook', async (req, res) => {
+  // Always respond 200 immediately so Meta doesn't retry
   res.sendStatus(200)
 
   if (!verifyMetaSignature(req)) {
@@ -785,10 +767,12 @@ app.post('/webhook', async (req, res) => {
       const field = change.field
       const value = change.value
       try {
-        if (field === 'messages')                        await handleMessagesEvent(value)
-        else if (field === 'message_template_status_update') await handleTemplateStatusEvent(value)
-        else if (field === 'phone_number_quality_update')    await handleQualityUpdate(value)
-        else if (field === 'account_alerts')                 console.log('[webhook] account_alert:', JSON.stringify(value))
+        if (field === 'messages')
+          await handleMessagesEvent(value)
+        else if (field === 'message_template_status_update')
+          await handleTemplateStatusEvent(value)
+        else if (field === 'phone_number_quality_update')
+          await handleQualityUpdate(value)
       } catch (err) {
         console.error(`[webhook][${field}]`, err.message)
       }
@@ -796,11 +780,13 @@ app.post('/webhook', async (req, res) => {
   }
 })
 
+// ── Delivery status updates from Meta ──────────────────────────
 async function handleMessagesEvent(value) {
   const phoneNumberId = value.metadata?.phone_number_id
 
+  // Update delivery status for sent messages (delivered / read / failed)
   for (const status of (value.statuses || [])) {
-    console.log(`[webhook] delivery status: ${status.id} → ${status.status}`)
+    console.log(`[webhook] delivery: ${status.id} → ${status.status}`)
     await callEdgeInternal('internalDeliveryWebhook', {
       id:           status.id,
       status:       status.status,
@@ -810,8 +796,9 @@ async function handleMessagesEvent(value) {
     })
   }
 
+  // Handle incoming messages
   for (const msg of (value.messages || [])) {
-    console.log(`[webhook] incoming message from ${msg.from}: type=${msg.type}`)
+    console.log(`[webhook] incoming from ${msg.from}: type=${msg.type}`)
     await handleIncomingMessage(msg, phoneNumberId, value.contacts)
   }
 }
@@ -821,22 +808,37 @@ async function handleIncomingMessage(msg, phoneNumberId, contacts) {
   const account = accountRes.data?.[0]
   if (!account) return
 
-  const userId      = account.user_id
-  const senderName  = contacts?.[0]?.profile?.name || msg.from
-  let messageText   = ''
-  if (msg.type === 'text') messageText = msg.text?.body || ''
+  const userId     = account.user_id
+  const senderName = contacts?.[0]?.profile?.name || msg.from
+  const messageText = msg.type === 'text' ? (msg.text?.body || '') : ''
 
   const settingsRes = await sbFetch(`/wb_settings?user_id=eq.${userId}&limit=1`)
   const settings = settingsRes.data?.[0]
 
+  // Handle STOP / unsubscribe
   if (messageText && /^(stop|unsubscribe|end|stopall|quit|cancel)$/i.test(messageText.trim())) {
-    await handleStopCommand(userId, msg.from, senderName, msg.id)
-    if (settings?.auto_reply && account.access_token) {
+    await sbFetch('/wb_blocklist', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id:             userId,
+        phone:               msg.from,
+        reason:              'STOP',
+        source:              'incoming_message',
+        original_message_id: msg.id,
+        created_at:          new Date().toISOString(),
+      }),
+    })
+    await sbFetch(`/wb_contacts?user_id=eq.${userId}&phone=eq.${msg.from}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'unsubscribed', unsubscribed_at: new Date().toISOString() }),
+    })
+    console.log(`[STOP] ${msg.from} unsubscribed`)
+    if (settings?.auto_reply && account.access_token)
       await sendAutoReply(msg.from, messageText, settings, account)
-    }
     return
   }
 
+  // Save to inbox
   await sbFetch('/wb_inbox', {
     method: 'POST',
     body: JSON.stringify({
@@ -854,9 +856,9 @@ async function handleIncomingMessage(msg, phoneNumberId, contacts) {
     }),
   }).catch(() => {})
 
-  if (settings?.auto_reply && messageText && account.access_token) {
+  // Auto-reply
+  if (settings?.auto_reply && messageText && account.access_token)
     await sendAutoReply(msg.from, messageText, settings, account)
-  }
 }
 
 async function sendAutoReply(toPhone, incomingText, settings, account) {
@@ -915,10 +917,8 @@ async function handleQualityUpdate(value) {
 }
 
 // ================================================================
-// SELF-PINGER
+// SELF-PINGER (keeps Render free tier alive)
 // ================================================================
-const PING_INTERVAL = 14 * 60 * 1000
-
 function startPinger() {
   setInterval(async () => {
     try {
@@ -927,11 +927,11 @@ function startPinger() {
     } catch (err) {
       console.error('[pinger] failed:', err.message)
     }
-  }, PING_INTERVAL)
+  }, 14 * 60 * 1000)
 }
 
 // ================================================================
-// START SERVER
+// START
 // ================================================================
 app.listen(PORT, () => {
   console.log(`WaBlast server running on ${SELF_URL}`)

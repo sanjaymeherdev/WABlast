@@ -2797,7 +2797,7 @@ function startPaymentPolling(orderId) {
 // ══════════════════════════════════════════════════════════════
 // TAB SWITCHING
 // ══════════════════════════════════════════════════════════════
-function switchTab(tabName) {
+async function switchTab(tabName) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'))
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
   const panel = document.getElementById(`tab-${tabName}`)

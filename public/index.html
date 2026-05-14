@@ -2796,55 +2796,76 @@ async function switchTab(tabName) {
 // ══════════════════════════════════════════════════════════════
 // SEND TAB
 // ══════════════════════════════════════════════════════════════
-let sendPollInterval = null
+// ══════════════════════════════════════════════════════════════
+// SEND TAB — full replacement
+// ══════════════════════════════════════════════════════════════
+let sendPollInterval     = null
 let activeSendCampaignId = null
 
 function loadSendCampaignSelect() {
   const select = document.getElementById('sendCampaignSelect')
   if (!select) return
-  const eligible = campaigns.filter(c => c.status === 'draft' || c.status === 'queued' || c.status === 'running' || c.status === 'paused')
-  select.innerHTML = '<option value="">— Select a campaign —</option>' +
-    eligible.map(c => `<option value="${c.id}">${escapeHtml(c.name)} · ${c.status} · ${c.total_contacts || 0} contacts</option>`).join('')
-  if (activeSendCampaignId) select.value = activeSendCampaignId
+
+  const eligible = campaigns.filter(c =>
+    ['draft', 'queued', 'running', 'paused'].includes(c.status)
+  )
+
+  select.innerHTML =
+    '<option value="">— Select a campaign —</option>' +
+    eligible.map(c =>
+      `<option value="${c.id}">${escapeHtml(c.name)} · ${c.status} · ${c.total_contacts || 0} contacts</option>`
+    ).join('')
+
+  // Restore selection after every rebuild
+  if (activeSendCampaignId && eligible.find(c => c.id === activeSendCampaignId))
+    select.value = activeSendCampaignId
 }
 
 function onSendCampaignChange() {
   const id = document.getElementById('sendCampaignSelect').value
-  activeSendCampaignId = id || null
+  stopSendPolling()
   resetSendStats()
-  stopSendPolling() // stop any existing poll
 
   if (!id) {
+    activeSendCampaignId = null
     document.getElementById('sendCampaignInfo').textContent = ''
     return
   }
 
+  activeSendCampaignId = id
   const c = campaigns.find(c => c.id === id)
-  if (c) {
-    document.getElementById('sendCampaignInfo').innerHTML =
-      `Template: ${c.template_name || '—'} · Group: ${c.group_name || 'All Contacts'}`
-    
-    // Show total contacts even before starting
-    document.getElementById('sendTotalCount').textContent = c.total_contacts || 0
-    document.getElementById('sendPendingCount').textContent = c.total_contacts || 0
-    document.getElementById('sendCurrentStatus').textContent = 
-      c.status === 'draft' ? 'Ready to start' : (c.status || 'Ready')
-    
-    // Only poll if already running/queued
-    if (c.status === 'running' || c.status === 'queued') {
-      startSendPolling(id)
-    }
+  if (!c) return
+
+  document.getElementById('sendCampaignInfo').innerHTML =
+    `Template: <strong>${escapeHtml(c.template_name || '—')}</strong> &nbsp;·&nbsp; ` +
+    `Group: <strong>${escapeHtml(c.group_name || 'All Contacts')}</strong>`
+
+  // Pre-fill from local data so UI is never empty
+  document.getElementById('sendTotalCount').textContent = c.total_contacts || 0
+  document.getElementById('sendPendingCount').textContent = c.total_contacts || 0
+  document.getElementById('sendCurrentStatus').textContent =
+    { draft:'Ready to start', queued:'Queued…', running:'Running…',
+      paused:'Paused', completed:'Completed ✅', failed:'Failed ❌' }[c.status] || 'Ready'
+
+  // For live campaigns: fetch real stats then keep polling
+  if (c.status === 'running' || c.status === 'queued') {
+    pollSendStatus(id).then(() => startSendPolling(id))
+  } else {
+    // Single fetch for paused / draft so counts are accurate
+    pollSendStatus(id)
   }
 }
-  
+
 function resetSendStats() {
-  document.getElementById('sendSentCount').textContent = '0'
+  document.getElementById('sendSentCount').textContent    = '0'
   document.getElementById('sendPendingCount').textContent = '0'
-  document.getElementById('sendFailedCount').textContent = '0'
-  document.getElementById('sendTotalCount').textContent = '0'
-  document.getElementById('sendProgressBar').style.width = '0%'
+  document.getElementById('sendFailedCount').textContent  = '0'
+  document.getElementById('sendTotalCount').textContent   = '0'
+  document.getElementById('sendProgressBar').style.width  = '0%'
   document.getElementById('sendCurrentStatus').textContent = 'Ready'
   document.getElementById('sendLogBody').innerHTML = ''
+  const hint = document.getElementById('sendBlockedHint')
+  if (hint) hint.style.display = 'none'
 }
 
 async function sendStart() {
@@ -2854,36 +2875,46 @@ async function sendStart() {
   const hint = document.getElementById('sendBlockedHint')
   hint.style.display = 'none'
 
-  const res = await fetch('/api/campaign/start', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ campaign_id: id, user_id: currentUser.id }),
-  }).then(r => r.json())
+  const btn = document.getElementById('sendStartBtn')
+  btn.disabled    = true
+  btn.textContent = '⏳ Starting…'
 
-  if (res.success) {
-    activeSendCampaignId = id
-    showToast(`▶ Campaign started — ${res.total || res.queued} contacts`)
-    document.getElementById('sendCurrentStatus').textContent = 'Running...'
-    startSendPolling(id)
-    await loadCampaigns()
-    loadSendCampaignSelect()
-    // Set the selected value again after reload
-    document.getElementById('sendCampaignSelect').value = id
-  } else {
-    hint.textContent = res.message || res.error || 'Failed to start'
-    hint.style.display = 'block'
-    showToast(hint.textContent, true)
+  try {
+    const res = await fetch('/api/campaign/start', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ campaign_id: id, user_id: currentUser.id }),
+    }).then(r => r.json())
+
+    if (res.success) {
+      activeSendCampaignId = id
+      showToast(`▶ Campaign started — ${res.total || res.queued} contacts queued`)
+      document.getElementById('sendCurrentStatus').textContent = 'Queued…'
+      await loadCampaigns()
+      loadSendCampaignSelect()
+      document.getElementById('sendCampaignSelect').value = id
+      startSendPolling(id)
+    } else {
+      hint.textContent   = res.message || res.error || 'Failed to start'
+      hint.style.display = 'block'
+      showToast(hint.textContent, true)
+    }
+  } finally {
+    btn.disabled    = false
+    btn.textContent = '▶ Start'
   }
 }
 
 async function sendPause() {
   const id = activeSendCampaignId
   if (!id) return
+
   const res = await fetch('/api/campaign/pause', {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ campaign_id: id }),
+    body:    JSON.stringify({ campaign_id: id }),
   }).then(r => r.json())
+
   if (res.success) {
     showToast('⏸ Campaign paused')
     document.getElementById('sendCurrentStatus').textContent = 'Paused'
@@ -2895,58 +2926,31 @@ async function sendPause() {
     showToast(res.message || 'Pause failed', true)
   }
 }
-  
-async function updateCampaignContactCount() {
-  const groupName = document.getElementById('campaignGroupSelect')?.value || null;
-  const countSpan = document.getElementById('campaignGroupCountNum');
-  if (!countSpan) return;
 
-  countSpan.textContent = '...';
-
-  let url = `${SUPABASE_URL}/rest/v1/wb_contacts?user_id=eq.${currentUser.id}&status=neq.unsubscribed&select=id`;
-  if (groupName && groupName.trim() !== '') {
-    url += `&group_name=eq.${encodeURIComponent(groupName)}`;
-  }
-
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${authToken}`,
-        'Prefer': 'count=exact',
-        'Range': '0-0'
-      }
-    });
-
-    // Read count from Content-Range header — no need to parse body
-    const range = res.headers.get('Content-Range');
-    const count = range ? parseInt(range.split('/')[1]) || 0 : 0;
-
-    countSpan.textContent = count;
-    document.getElementById('campaignGroupCount').innerHTML =
-      `<span id="campaignGroupCountNum">${count}</span> contact${count !== 1 ? 's' : ''} will receive this message`;
-  } catch (err) {
-    console.error('Failed to count contacts', err);
-    countSpan.textContent = '0';
-  }
-}
-  
 async function sendStop() {
   const id = activeSendCampaignId
   if (!id) return
-  if (!confirm('Stop this campaign? It will reset to draft.')) return
+  if (!confirm('Stop this campaign? It resets to draft and refunds unsent credits.')) return
+
   const res = await fetch('/api/campaign/stop', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ campaign_id: id }),
   }).then(r => r.json())
+
   if (res.success) {
-    showToast('⏹ Campaign stopped')
-    activeSendCampaignId = null
+    const refunded = res.refunded || 0
+    showToast(`⏹ Campaign stopped${refunded ? ` — ${refunded} credits refunded` : ''}`)
     stopSendPolling()
+    activeSendCampaignId = null
     resetSendStats()
     await loadCampaigns()
     loadSendCampaignSelect()
+    // Refresh credit widget
+    const creditsRes = await callEdge('getCredits')
+    if (creditsRes.success) updateCreditUI(creditsRes.credits)
+  } else {
+    showToast(res.message || 'Stop failed', true)
   }
 }
 
@@ -2956,13 +2960,14 @@ async function sendPauseCampaign(id) {
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ campaign_id: id }),
   }).then(r => r.json())
+
   if (res.success) { showToast('Campaign paused'); await loadCampaigns() }
-  else showToast(res.error || 'Pause failed', true)
+  else showToast(res.message || res.error || 'Pause failed', true)
 }
 
 function startSendPolling(id) {
   stopSendPolling()
-  sendPollInterval = setInterval(() => pollSendStatus(id), 2000)
+  sendPollInterval = setInterval(() => pollSendStatus(id), 2500)
 }
 
 function stopSendPolling() {
@@ -2973,51 +2978,92 @@ async function pollSendStatus(id) {
   const campaignId = id || activeSendCampaignId
   if (!campaignId) return
 
+  let res
   try {
-    const res = await fetch(`/api/campaign/status/${campaignId}`).then(r => r.json())
-    if (!res.success) return
-
-    const sent = res.sent || 0
-    const failed = res.failed || 0
-    const total = res.total || 0
-    // pending: if total is 0 (draft, not yet queued), show total_contacts from local campaigns[]
-    const localCampaign = campaigns.find(c => c.id === campaignId)
-    const displayTotal = total || localCampaign?.total_contacts || 0
-    const pending = res.pending ?? (displayTotal - sent - failed)
-
-    document.getElementById('sendSentCount').textContent = sent
-    document.getElementById('sendPendingCount').textContent = Math.max(0, pending)
-    document.getElementById('sendFailedCount').textContent = failed
-    document.getElementById('sendTotalCount').textContent = displayTotal
-
-    const pct = displayTotal > 0 ? Math.round(((sent + failed) / displayTotal) * 100) : 0
-    document.getElementById('sendProgressBar').style.width = pct + '%'
-
-    const statusMap = { 
-      draft: 'Ready to start', queued: 'Queued...', running: 'Running...', 
-      paused: 'Paused', completed: 'Completed ✅', failed: 'Failed ❌', unknown: 'Ready'
-    }
-    document.getElementById('sendCurrentStatus').textContent = 
-      statusMap[res.status] || res.status || 'Ready'
-
-    if (res.status === 'completed' || res.status === 'failed') {
-      stopSendPolling()
-      await loadCampaigns()
-      loadSendCampaignSelect()
-      const logSelect = document.getElementById('logCampaignSelect')
-      if (logSelect && campaignId) { logSelect.value = campaignId; await loadCampaignLogs() }
-      if (res.status === 'completed') {
-        showToast('🎉 Campaign completed!')
-        activeSendCampaignId = null
-        document.getElementById('sendCampaignSelect').value = ''
-        resetSendStats()
-        document.getElementById('sendCampaignInfo').textContent = ''
-      } else {
-        showToast('❌ Campaign failed. Check logs.', true)
-      }
-    }
+    res = await fetch(`/api/campaign/status/${campaignId}`).then(r => r.json())
   } catch (err) {
-    console.error('Poll error:', err)
+    console.error('Poll fetch error:', err)
+    return
+  }
+  if (!res.success) return
+
+  const sent   = res.sent    || 0
+  const failed = res.failed  || 0
+  const pending = res.pending || 0
+  const localCampaign = campaigns.find(c => c.id === campaignId)
+  const total  = res.total || localCampaign?.total_contacts || 0
+
+  document.getElementById('sendSentCount').textContent    = sent
+  document.getElementById('sendPendingCount').textContent = pending
+  document.getElementById('sendFailedCount').textContent  = failed
+  document.getElementById('sendTotalCount').textContent   = total
+
+  const pct = total > 0 ? Math.round(((sent + failed) / total) * 100) : 0
+  document.getElementById('sendProgressBar').style.width = pct + '%'
+
+  const statusMap = {
+    draft:'Ready to start', queued:'Queued…', running:'Running…',
+    paused:'Paused', completed:'Completed ✅', failed:'Failed ❌', unknown:'Ready'
+  }
+  document.getElementById('sendCurrentStatus').textContent =
+    statusMap[res.status] || res.status || 'Ready'
+
+  // Campaign finished
+  if (res.status === 'completed' || res.status === 'failed') {
+    stopSendPolling()
+    await loadCampaigns()
+    loadSendCampaignSelect()
+
+    const logSelect = document.getElementById('logCampaignSelect')
+    if (logSelect) { logSelect.value = campaignId; await loadCampaignLogs() }
+
+    if (res.status === 'completed') {
+      showToast('🎉 Campaign completed!')
+      const creditsRes = await callEdge('getCredits')
+      if (creditsRes.success) updateCreditUI(creditsRes.credits)
+    } else {
+      showToast('❌ Campaign failed — check Campaign Logs.', true)
+    }
+
+    activeSendCampaignId = null
+    document.getElementById('sendCampaignSelect').value = ''
+    resetSendStats()
+    document.getElementById('sendCampaignInfo').textContent = ''
+    return
+  }
+
+  // Externally paused (e.g. from Campaigns tab) — stop polling
+  if (res.status === 'paused') stopSendPolling()
+}
+
+async function updateCampaignContactCount() {
+  const groupName = document.getElementById('campaignGroupSelect')?.value || null
+  const countSpan = document.getElementById('campaignGroupCountNum')
+  if (!countSpan) return
+
+  countSpan.textContent = '...'
+
+  let url = `${SUPABASE_URL}/rest/v1/wb_contacts?user_id=eq.${currentUser.id}&status=neq.unsubscribed&select=id`
+  if (groupName && groupName.trim() !== '')
+    url += `&group_name=eq.${encodeURIComponent(groupName)}`
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'apikey':        SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${authToken}`,
+        'Prefer':        'count=exact',
+        'Range':         '0-0',
+      }
+    })
+    const range = res.headers.get('Content-Range')
+    const count = range ? parseInt(range.split('/')[1]) || 0 : 0
+    countSpan.textContent = count
+    document.getElementById('campaignGroupCount').innerHTML =
+      `<span id="campaignGroupCountNum">${count}</span> contact${count !== 1 ? 's' : ''} will receive this message`
+  } catch (err) {
+    console.error('Failed to count contacts', err)
+    countSpan.textContent = '0'
   }
 }
 // ══════════════════════════════════════════════════════════════

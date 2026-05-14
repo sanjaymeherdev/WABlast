@@ -699,7 +699,7 @@ async function runSendLoop(campaign_id) {
         success = true
         waMessageId = sendRes.data?.messages?.[0]?.id || null
         job.sent++
-
+        job.log.push({ time: new Date().toISOString(), name: contact.name, phone: contact.phone, status: 'sent', error: null })
         const profileRes = await sbFetch(`/wb_profiles?id=eq.${job.user_id}&limit=1`)
         const profile = profileRes.data?.[0]
         if (profile) {
@@ -716,7 +716,7 @@ async function runSendLoop(campaign_id) {
       } else {
         errorMsg = sendRes.data?.error?.message || 'Meta API error'
         job.failed++
-        
+        job.log.push({ time: new Date().toISOString(), name: contact.name, phone: contact.phone, status: 'failed', error: errorMsg })
         await updateCampaignStats(campaign_id, job.sent, job.failed)
         await insertCampaignLog(campaign_id, contact.phone, contact.name, 'failed', errorMsg)
 
@@ -731,7 +731,7 @@ async function runSendLoop(campaign_id) {
     } catch (err) {
       errorMsg = err.message
       job.failed++
-      
+      job.log.push({ time: new Date().toISOString(), name: contact.name, phone: contact.phone, status: 'failed', error: errorMsg })
       await updateCampaignStats(campaign_id, job.sent, job.failed)
       await insertCampaignLog(campaign_id, contact.phone, contact.name, 'failed', errorMsg)
     }

@@ -2985,10 +2985,10 @@ async function pollSendStatus(id) {
   }
   if (!res.success) return
 
-  const sent   = res.sent    || 0
-  const failed = res.failed  || 0
+  const sent    = res.sent    || 0
+  const failed  = res.failed  || 0
   const pending = res.pending || 0
-  const total  = res.total || 0
+  const total   = res.total   || 0
 
   document.getElementById('sendSentCount').textContent    = sent
   document.getElementById('sendPendingCount').textContent = pending
@@ -3008,7 +3008,9 @@ async function pollSendStatus(id) {
   if (res.status === 'completed' || res.status === 'failed') {
     stopSendPolling()
     await loadCampaigns()
-    await loadActiveCampaign()
+
+    // ← DON'T call loadActiveCampaign() immediately
+    // Show final state for 3 seconds, then refresh
     if (res.status === 'completed') {
       showToast('🎉 Campaign completed!')
       const creditsRes = await callEdge('getCredits')
@@ -3016,10 +3018,17 @@ async function pollSendStatus(id) {
     } else {
       showToast('❌ Campaign failed — check Campaign Logs.', true)
     }
+
+    // Wait 3 seconds so user sees 100% before card disappears
+    setTimeout(async () => {
+      activeSendCampaignId = null
+      await loadActiveCampaign()
+    }, 3000)
   }
 
   if (res.status === 'paused') stopSendPolling()
 }
+  
 async function deleteCampaignFromList(id) {
   if (!confirm('Delete this campaign? This cannot be undone.')) return
 

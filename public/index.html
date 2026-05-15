@@ -2814,7 +2814,7 @@ let activeSendCampaignId = null
 
 async function loadActiveCampaign() {
   try {
-    const res = await fetch('/api/campaign/active').then(r => r.json())
+    const res = await callEdge('getActiveCampaign')
     if (res.success && res.campaign) {
       activeSendCampaignId = res.campaign.id
       renderActiveCampaign(res.campaign)

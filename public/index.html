@@ -2783,7 +2783,6 @@ async function switchTab(tabName) {
     loadCampaigns().then(() => {
       loadSendCampaignSelect()
       resetSendStats()  // Add this line
-      activeSendCampaignId = null  // Add this line
     }) 
   }
   if (tabName === 'templates') { renderTemplates() }

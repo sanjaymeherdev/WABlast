@@ -417,15 +417,16 @@ app.listen(PORT, () => {
   console.log(`   PORT: ${PORT}`)
   console.log(`   ENV: ${process.env.NODE_ENV || 'development'}`)
   
-  let processorBusy = false
-  
-  // Queue processor interval (every 3s)
+ let processorBusy = false
+
+// Queue processor — calls Edge function directly (no self-HTTP race condition)
+// setTimeout delays first run until server is fully ready
+setTimeout(() => {
   setInterval(async () => {
     if (processorBusy) return
     processorBusy = true
     try {
-      const res = await fetch(`${SELF_URL}/api/queue/process`, { method: 'POST' })
-      const data = await res.json()
+      const data = await callEdge('campaignProcessQueue', {})
       if (data?.processed > 0) {
         console.log('[queue] processed:', { sent: data.sent, failed: data.failed, phone: data.phone })
       }
@@ -435,6 +436,7 @@ app.listen(PORT, () => {
       processorBusy = false
     }
   }, 3000)
+}, 5000) // wait 5s after listen() before starting
   
   // Health check ping (every 14 min to keep Render awake)
   setInterval(async () => {

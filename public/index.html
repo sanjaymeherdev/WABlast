@@ -2394,14 +2394,17 @@ else showToast(res.message || 'Save failed', true)
 function startEmbeddedSignup() {
 const statusEl = document.getElementById('waConnectStatus')
 statusEl.textContent = 'Opening Meta login…'
-const popup = window.open(`${SERVER_URL}/wa-connect`, 'wa-connect', 'width=600,height=700,left=200,top=100')
+// Use demo flow for FB app review
+const popup = window.open(`${SERVER_URL}/wa-connect-demo`, 'wa-connect', 'width=600,height=700,left=200,top=100')
 if (!popup) {
 statusEl.textContent = 'Popup blocked! Please allow popups for this site.'
 showToast('Allow popups to connect WhatsApp', true)
 }
 }
 async function handleWaOAuthMessage(event) {
-if (!event.data || event.data.type !== 'WA_CODE') return
+if (!event.data) return
+// Handle both old OAuth code and new demo success
+if (event.data.type === 'WA_CODE') {
 const { code } = event.data
 if (!code) return
 const statusEl = document.getElementById('waConnectStatus')
@@ -2426,7 +2429,34 @@ showToast(data.error || 'Connection failed', true)
 statusEl.textContent = '❌ Error: ' + err.message
 showToast(err.message, true)
 }
+} else if (event.data.type === 'WA_DEMO_SUCCESS') {
+// Handle demo flow success
+const { waba_id, waba_name, phone_number, phone_number_id, display_name } = event.data
+const statusEl = document.getElementById('waConnectStatus')
+statusEl.textContent = '🔄 Saving your demo number…'
+try {
+// Post to backend to save the demo account
+const res = await fetch(`${SERVER_URL}/api/wa/connect-demo`, {
+method:  'POST',
+headers: { 'Content-Type': 'application/json' },
+body:    JSON.stringify({ waba_id, waba_name, phone_number, phone_number_id, display_name }),
+})
+const data = await res.json()
+if (data.success) {
+statusEl.textContent = ''
+showToast('✅ WhatsApp number connected!')
+await loadWaAccounts()
+await loadDashboardStats()
+} else {
+statusEl.textContent = '❌ ' + (data.error || 'Connection failed')
+showToast(data.error || 'Connection failed', true)
 }
+} catch (err) {
+statusEl.textContent = '❌ Error: ' + err.message
+showToast(err.message, true)
+}
+}
+
 async function loadWaAccounts() {
 const res = await callEdge('getWaAccounts')
 renderWaAccounts(res.accounts || [])

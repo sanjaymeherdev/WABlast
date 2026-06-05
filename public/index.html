@@ -2455,7 +2455,8 @@ showToast(data.error || 'Connection failed', true)
 statusEl.textContent = '❌ Error: ' + err.message
 showToast(err.message, true)
 }
-} // <-- END handleWaOAuthMessage
+} 
+}// <-- END handleWaOAuthMessage
 
 async function loadWaAccounts() {
 const res = await callEdge('getWaAccounts')
@@ -2620,6 +2621,19 @@ if (tabName === 'logs')      { loadCampaigns() }
 if (tabName === 'settings')  { loadSettings(); loadTransactions() }
 if (tabName === 'account')   { loadWaAccounts() }
 }
+async function sendPauseCampaign(id) {
+  const res = await callEdge('campaignPause', { campaign_id: id })
+  if (res.success) { showToast('⏸ Campaign paused'); await loadCampaigns() }
+  else showToast(res.message || 'Pause failed', true)
+}
+
+function onSendCampaignChange() {}
+async function startCampaign(id) {
+  const res = await callEdge('campaignStart', { campaign_id: id })
+  if (res.success) { showToast('▶ Started'); await loadCampaigns() }
+  else showToast(res.message || 'Start failed', true)
+}
+async function pauseCampaign(id) { await sendPauseCampaign(id) }
 // ══════════════════════════════════════════════════════════════
 // SEND TAB — FIXED: Real-time Gap Countdown & Status
 // ══════════════════════════════════════════════════════════════

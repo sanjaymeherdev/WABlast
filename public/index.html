@@ -2455,7 +2455,7 @@ showToast(data.error || 'Connection failed', true)
 statusEl.textContent = '❌ Error: ' + err.message
 showToast(err.message, true)
 }
-}
+} // <-- END handleWaOAuthMessage
 
 async function loadWaAccounts() {
 const res = await callEdge('getWaAccounts')

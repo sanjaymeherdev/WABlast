@@ -2437,9 +2437,12 @@ statusEl.textContent = '🔄 Saving your demo number…'
 try {
 // Post to backend to save the demo account
 const res = await fetch(`${SERVER_URL}/api/wa/connect-demo`, {
-method:  'POST',
-headers: { 'Content-Type': 'application/json' },
-body:    JSON.stringify({ waba_id, waba_name, phone_number, phone_number_id, display_name }),
+  method:  'POST',
+  headers: { 
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${authToken}`  // ← this line is missing
+  },
+  body: JSON.stringify({ waba_id, waba_name, phone_number, phone_number_id, display_name }),
 })
 const data = await res.json()
 if (data.success) {

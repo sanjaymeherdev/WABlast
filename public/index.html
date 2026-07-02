@@ -1043,7 +1043,7 @@ Don't have an account? <a onclick="toggleAuthMode()">Sign up free</a>
 <div class="guide-step-icon">👤</div>
 <div class="guide-step-body">
 <div class="guide-step-title">Create your account</div>
-<div class="guide-step-desc">Sign up with your email and password on the login screen. New accounts receive free credits to get started. You can also sign in with Google for quick access.</div>
+<div class="guide-step-desc">Go to <strong>Account → Connected Numbers</strong> and click <strong>"Connect Number"</strong>. Paste in your WhatsApp Business Account ID and a System User access token from Meta Business Manager (see below to generate one), select your number, and connect. Your number will appear in the list once connected.</div>
 </div>
 </div>
 <div class="guide-step">
@@ -1121,6 +1121,51 @@ Don't have an account? <a onclick="toggleAuthMode()">Sign up free</a>
 <div class="guide-callout guide-callout-green">
 💡 <strong>Tip:</strong> Marketing templates have stricter review. Use clear, non-spammy language. Utility templates (order updates, alerts) get approved faster.
 </div>
+</div>
+  <!-- ══ WA MANUAL CONNECT MODAL ══ -->
+<div class="modal" id="waConnectModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">📱 Connect WhatsApp Number</div>
+      <button class="btn btn-ghost btn-xs" onclick="closeWaConnectModal()">✕</button>
+    </div>
+
+    <!-- Step 1: token + WABA ID -->
+    <div id="waConnectStep1">
+      <span class="form-label" style="margin-top:0;">WhatsApp Business Account ID</span>
+      <input type="text" id="waConnWabaId" placeholder="e.g. 1491368952771238">
+
+      <span class="form-label">System User Access Token</span>
+      <input type="password" id="waConnToken" placeholder="Paste your never-expiring token">
+
+      <div id="waConnError1" style="color:var(--red);font-size:12px;margin-top:8px;min-height:16px;"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="waConnVerifyBtn" onclick="waVerifyNumbers()">Find My Numbers →</button>
+      </div>
+
+      <div style="font-size:11px;color:var(--text3);line-height:1.6;margin-top:14px;">
+        Don't have a token yet? In Meta Business Manager → Business Settings → System Users,
+        create a system user, assign it to this app and your WhatsApp Business Account, then
+        generate a token with <code style="background:var(--surface3);padding:1px 5px;border-radius:4px;">whatsapp_business_messaging</code>
+        and <code style="background:var(--surface3);padding:1px 5px;border-radius:4px;">whatsapp_business_management</code>
+        permissions, expiration set to Never.
+      </div>
+    </div>
+
+    <!-- Step 2: pick number -->
+    <div id="waConnectStep2" style="display:none;">
+      <span class="form-label" style="margin-top:0;">Select Number to Connect</span>
+      <div id="waConnNumberList" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
+
+      <div id="waConnError2" style="color:var(--red);font-size:12px;margin-top:8px;min-height:16px;"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="waConnSaveBtn" onclick="waSaveNumber()">Connect This Number</button>
+        <button class="btn btn-ghost" onclick="waResetConnectModal()">← Back</button>
+      </div>
+    </div>
+  </div>
 </div>
 <!-- Contacts -->
 <div class="guide-section">
@@ -1417,7 +1462,7 @@ Don't have an account? <a onclick="toggleAuthMode()">Sign up free</a>
 <div class="card">
 <div class="card-header">
 <div class="card-title">📞 Connected Numbers</div>
-<button class="btn btn-primary btn-sm" onclick="startEmbeddedSignup()">➕ Connect Number</button>
+<button class="btn btn-primary btn-sm" onclick="openWaConnectModal()">➕ Connect Number</button>
 </div>
 <div id="waAccountsList" style="margin-top:8px;">
 <div class="empty-state"><div class="empty-icon">📱</div><p>No numbers connected</p></div>
@@ -1574,6 +1619,135 @@ let currentHeaderType = 'NONE'
 // ══════════════════════════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// WA MANUAL CONNECT (System User Token)
+// ══════════════════════════════════════════════════════════════
+let waConnSelectedNumber = null
+let waConnNumbersCache   = []
+
+function openWaConnectModal() {
+  document.getElementById('waConnWabaId').value = ''
+  document.getElementById('waConnToken').value  = ''
+  document.getElementById('waConnError1').textContent = ''
+  document.getElementById('waConnError2').textContent = ''
+  waResetConnectModal()
+  openModal('waConnectModal')
+}
+
+function closeWaConnectModal() {
+  closeModal('waConnectModal')
+}
+
+async function waVerifyNumbers() {
+  const wabaId = document.getElementById('waConnWabaId').value.trim()
+  const token  = document.getElementById('waConnToken').value.trim()
+  const errEl  = document.getElementById('waConnError1')
+  const btn    = document.getElementById('waConnVerifyBtn')
+
+  errEl.textContent = ''
+  if (!wabaId || !token) { errEl.textContent = 'Both fields are required.'; return }
+
+  btn.disabled = true
+  btn.textContent = 'Checking…'
+
+  try {
+    const res = await fetch(`${SERVER_URL}/api/wa/manual/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ waba_id: wabaId, access_token: token }),
+    })
+    const data = await res.json()
+    if (!data.success) {
+      errEl.textContent = data.error || 'Verification failed.'
+      btn.disabled = false; btn.textContent = 'Find My Numbers →'
+      return
+    }
+
+    waConnNumbersCache = data.numbers
+    renderWaConnNumbers()
+    document.getElementById('waConnectStep1').style.display = 'none'
+    document.getElementById('waConnectStep2').style.display = 'block'
+  } catch (err) {
+    errEl.textContent = 'Network error: ' + err.message
+  } finally {
+    btn.disabled = false
+    btn.textContent = 'Find My Numbers →'
+  }
+}
+
+function renderWaConnNumbers() {
+  const list = document.getElementById('waConnNumberList')
+  list.innerHTML = waConnNumbersCache.map((n, i) => `
+    <div class="data-row" id="waConnNum${i}" style="cursor:pointer;border:2px solid var(--border2);" onclick="waSelectConnNumber(${i})">
+      <div>
+        <div class="data-row-title">${escapeHtml(n.display_name)}</div>
+        <div class="data-row-sub" style="font-family:'DM Mono',monospace;">${n.phone_number} · ${n.quality_rating}${n.verified ? '' : ' · Unverified'}</div>
+      </div>
+    </div>
+  `).join('')
+  if (waConnNumbersCache.length === 1) waSelectConnNumber(0)
+}
+
+function waSelectConnNumber(i) {
+  document.querySelectorAll('#waConnNumberList .data-row').forEach(el => el.style.borderColor = 'var(--border2)')
+  document.getElementById('waConnNum' + i).style.borderColor = 'var(--green)'
+  waConnSelectedNumber = waConnNumbersCache[i]
+}
+
+async function waSaveNumber() {
+  const errEl = document.getElementById('waConnError2')
+  const btn   = document.getElementById('waConnSaveBtn')
+  errEl.textContent = ''
+
+  if (!waConnSelectedNumber) { errEl.textContent = 'Select a number first.'; return }
+
+  btn.disabled = true
+  btn.textContent = 'Connecting…'
+
+  try {
+    const res = await fetch(`${SERVER_URL}/api/wa/manual/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        waba_id:         document.getElementById('waConnWabaId').value.trim(),
+        phone_number_id: waConnSelectedNumber.phone_number_id,
+        access_token:    document.getElementById('waConnToken').value.trim(),
+      }),
+    })
+    const data = await res.json()
+    if (!data.success) {
+      errEl.textContent = data.error || 'Failed to save.'
+      btn.disabled = false; btn.textContent = 'Connect This Number'
+      return
+    }
+
+    showToast(`✅ ${data.display_name} connected!`)
+    if (!data.webhook_subscribed) {
+      showToast('⚠️ Webhook subscription failed — delivery tracking may not update.', true)
+    }
+    closeWaConnectModal()
+    await loadWaAccounts()
+    await loadDashboardStats()
+  } catch (err) {
+    errEl.textContent = 'Network error: ' + err.message
+  } finally {
+    btn.disabled = false
+    btn.textContent = 'Connect This Number'
+  }
+}
+
+function waResetConnectModal() {
+  document.getElementById('waConnectStep2').style.display = 'none'
+  document.getElementById('waConnectStep1').style.display = 'block'
+  document.getElementById('waConnVerifyBtn').disabled = false
+  document.getElementById('waConnVerifyBtn').textContent = 'Find My Numbers →'
+  waConnSelectedNumber = null
+  waConnNumbersCache = []
+}
+  
 function showToast(msg, isError = false) {
 const t = document.getElementById('toast')
 t.textContent = msg
@@ -1715,9 +1889,6 @@ loadSettings(),
 loadContactsForSelect()
 loadGroupsForSelect()
 loadTemplatesForCampaignSelect()
-// Listen for WA OAuth messages from popup
-window.removeEventListener('message', handleWaOAuthMessage)
-window.addEventListener('message', handleWaOAuthMessage)
 }
 async function loadDashboardStats() {
 const stats = await callEdge('getCredits')
@@ -2390,17 +2561,7 @@ const res = await callEdge('saveSettings', { groq_key: key })
 if (res.success) { showToast('Groq key saved'); document.getElementById('groqKey').value = '••••••••' }
 else showToast(res.message || 'Save failed', true)
 }
-// ── WA Connect ──
-function startEmbeddedSignup() {
-const statusEl = document.getElementById('waConnectStatus')
-statusEl.textContent = 'Opening Meta login…'
-// Use demo flow for FB app review
-const popup = window.open(`${SERVER_URL}/wa-connect-demo`, 'wa-connect', 'width=600,height=700,left=200,top=100')
-if (!popup) {
-statusEl.textContent = 'Popup blocked! Please allow popups for this site.'
-showToast('Allow popups to connect WhatsApp', true)
-}
-}
+
 async function handleWaOAuthMessage(event) {
 if (!event.data) return
 // Handle both old OAuth code and new demo success
@@ -2908,8 +3069,13 @@ window.saveLimitSettings  = saveLimitSettings
 window.saveAutoReplySettings = saveAutoReplySettings
 window.updateProfile      = updateProfile
 window.saveGroqKey        = saveGroqKey
-window.startEmbeddedSignup= startEmbeddedSignup
 window.sendDelete = sendDelete
+window.openWaConnectModal  = openWaConnectModal
+window.closeWaConnectModal = closeWaConnectModal
+window.waVerifyNumbers     = waVerifyNumbers
+window.waSelectConnNumber  = waSelectConnNumber
+window.waSaveNumber        = waSaveNumber
+window.waResetConnectModal = waResetConnectModal
 window.deleteCampaignFromList = deleteCampaignFromList
 window.loadActiveCampaign = loadActiveCampaign
 window.disconnectNumber   = disconnectNumber

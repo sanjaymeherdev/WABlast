@@ -7,6 +7,7 @@ const express = require('express')
 const fetch = require('node-fetch')
 const crypto = require('crypto')
 const path = require('path')
+const { encryptToken, decryptToken } = require('./crypto-utils')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -215,7 +216,7 @@ app.post('/api/wa/manual/save', async (req, res) => {
         phone_number_id,
         phone_number:   phoneData.display_phone_number,
         display_name:   phoneData.verified_name,
-        access_token, // TODO: encrypt at rest before scaling to many client tokens
+        access_token: encryptToken(access_token), // encrypted at rest (AES-256-GCM)
         quality_rating: phoneData.quality_rating || 'GREEN',
         is_active:      true,
         messages_sent_today: 0,

@@ -12,21 +12,30 @@ if (KEY.length !== 32) {
   )
 }
 
+// NOTE ON FORMAT: this must stay byte-compatible with the Deno/Web Crypto
+// side (supabase/functions/wablast/crypto-utils.ts), which is used to
+// decrypt these same tokens inside the Edge Function. Web Crypto's
+// AES-GCM always appends the 16-byte auth tag directly onto the
+// ciphertext ("combined" below) — Node's crypto module normally keeps
+// them separate (getAuthTag()), so we manually concatenate here to match.
+// Stored format: "<iv_base64>:<combined_base64>"
+
 function encryptToken(plaintext) {
   const iv = crypto.randomBytes(12) // 96-bit IV, standard for GCM
   const cipher = crypto.createCipheriv('aes-256-gcm', KEY, iv)
   const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
-  const authTag = cipher.getAuthTag()
-  // Store as iv:authTag:ciphertext, each base64
-  return [iv.toString('base64'), authTag.toString('base64'), ciphertext.toString('base64')].join(':')
+  const authTag = cipher.getAuthTag() // 16 bytes
+  const combined = Buffer.concat([ciphertext, authTag])
+  return `${iv.toString('base64')}:${combined.toString('base64')}`
 }
 
 function decryptToken(stored) {
-  const [ivB64, tagB64, ctB64] = stored.split(':')
-  if (!ivB64 || !tagB64 || !ctB64) throw new Error('Malformed encrypted token')
+  const [ivB64, combinedB64] = stored.split(':')
+  if (!ivB64 || !combinedB64) throw new Error('Malformed encrypted token')
   const iv = Buffer.from(ivB64, 'base64')
-  const authTag = Buffer.from(tagB64, 'base64')
-  const ciphertext = Buffer.from(ctB64, 'base64')
+  const combined = Buffer.from(combinedB64, 'base64')
+  const authTag = combined.subarray(combined.length - 16)
+  const ciphertext = combined.subarray(0, combined.length - 16)
   const decipher = crypto.createDecipheriv('aes-256-gcm', KEY, iv)
   decipher.setAuthTag(authTag)
   const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()])
